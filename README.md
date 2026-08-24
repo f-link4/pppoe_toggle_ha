@@ -8,7 +8,7 @@ PPPoE Toggle HA — WAN interface management for CARP failover events on pfSense
 - IPv4 and IPv6 support
 - DHCPv6 + radvd management on track interfaces
 - RECONCILE — state check at boot
-- RECONNECT — force WAN reconnect (add /usr/local/sbin/pppoe_toggle_ha reconnect to cron)
+- RECONNECT — force WAN reconnect (add to cron: `/usr/local/sbin/pppoe_toggle_ha reconnect`)
 - flock protection against parallel runs
 - Works with new if_pppoe driver on pfSense 2.9.0
 
