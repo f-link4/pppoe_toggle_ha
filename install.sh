@@ -32,10 +32,11 @@ fi
 
 DEFAULT_VHID=1
 echo ""
-read -p "Please choose the CARP VHID (default: ${DEFAULT_VHID}): " USER_VHID
+printf "Please choose the CARP VHID (default: %s): " "$DEFAULT_VHID"
+read USER_VHID
 USER_VHID=${USER_VHID:-$DEFAULT_VHID}
 
-if ! [[ "$USER_VHID" =~ ^[0-9]+$ ]]; then
+if ! echo "$USER_VHID" | grep -Eq '^[0-9]+$'; then
     echo "Error: VHID must be a number. Using default: ${DEFAULT_VHID}"
     USER_VHID=$DEFAULT_VHID
 fi
