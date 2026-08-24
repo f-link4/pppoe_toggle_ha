@@ -41,7 +41,7 @@ chmod 644 /usr/local/etc/devd/pppoe_toggle_ha.conf
 echo "Configuring service..."
 sysrc -f /etc/rc.conf.local pppoe_toggle_ha_enable="YES"
 service pppoe_toggle_ha start
-rehash
+hash -r
 
 cd /
 rm -rf $TMPDIR
