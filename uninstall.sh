@@ -13,9 +13,9 @@ echo "Stopping service..."
 service pppoe_toggle_ha stop
 
 echo "Removing files..."
-rm -f /usr/local/sbin/pppoe_toggle_ha
-rm -f /usr/local/etc/rc.d/pppoe_toggle_ha
-rm -f /usr/local/etc/devd/pppoe_toggle_ha.conf
+rm -fv /usr/local/sbin/pppoe_toggle_ha
+rm -fv /usr/local/etc/rc.d/pppoe_toggle_ha
+rm -fv /usr/local/etc/devd/pppoe_toggle_ha.conf
 
 echo "Removing from autostart..."
 sysrc -f /etc/rc.conf.local -x pppoe_toggle_ha_enable
