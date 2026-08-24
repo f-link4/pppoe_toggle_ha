@@ -18,11 +18,11 @@ if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help']))
     echo "  PPPoE Toggle HA — WAN interface management for CARP failover events\n";
     echo "=======================================================================\n";
     echo "Usage:\n";
-    echo "  ./pppoe_toggle_ha @<VHID> MASTER    - Enable WAN (CARP MASTER)\n";
-    echo "  ./pppoe_toggle_ha @<VHID> BACKUP    - Disable WAN (CARP BACKUP)\n";
-    echo "  ./pppoe_toggle_ha RECONCILE         - Check and fix state at boot\n";
-    echo "  ./pppoe_toggle_ha RECONNECT         - Force WAN reconnect\n";
-    echo "  ./pppoe_toggle_ha help              - Show this help\n";
+    echo "  pppoe_toggle_ha @<VHID> MASTER    - Enable WAN (CARP MASTER)\n";
+    echo "  pppoe_toggle_ha @<VHID> BACKUP    - Disable WAN (CARP BACKUP)\n";
+    echo "  pppoe_toggle_ha RECONCILE         - Check and fix state at boot\n";
+    echo "  pppoe_toggle_ha RECONNECT         - Force WAN reconnect\n";
+    echo "  pppoe_toggle_ha help              - Show this help\n";
     echo "=======================================================================\n";
     exit(0);
 }
@@ -243,6 +243,7 @@ $is_enabled = isset($config['interfaces'][$ifkey]['enable']);
 // RECONCILE
 
 if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONCILE') {
+    @unlink($state_file);
     apply_carp_state($carp_state);
     exit(0);
 }
