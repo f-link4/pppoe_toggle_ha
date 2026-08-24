@@ -10,20 +10,19 @@
  * @link https://github.com/f-link4/pppoe_toggle_ha
  */
 
-// ============================================================
+
 // USAGE
-// ============================================================
 
 if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help'])) {
     echo "=======================================================================\n";
     echo "  PPPoE Toggle HA — WAN interface management for CARP failover events\n";
     echo "=======================================================================\n";
     echo "Usage:\n";
-    echo "  pppoe_toggle_ha @<VHID> MASTER    - Enable WAN (CARP MASTER)\n";
-    echo "  pppoe_toggle_ha @<VHID> BACKUP    - Disable WAN (CARP BACKUP)\n";
-    echo "  pppoe_toggle_ha RECONCILE         - Check and fix state at boot\n";
-    echo "  pppoe_toggle_ha RECONNECT         - Force WAN reconnect\n";
-    echo "  pppoe_toggle_ha help              - Show this help\n";
+    echo "  ./pppoe_toggle_ha @<VHID> MASTER    - Enable WAN (CARP MASTER)\n";
+    echo "  ./pppoe_toggle_ha @<VHID> BACKUP    - Disable WAN (CARP BACKUP)\n";
+    echo "  ./pppoe_toggle_ha RECONCILE         - Check and fix state at boot\n";
+    echo "  ./pppoe_toggle_ha RECONNECT         - Force WAN reconnect\n";
+    echo "  ./pppoe_toggle_ha help              - Show this help\n";
     echo "=======================================================================\n";
     exit(0);
 }
@@ -34,9 +33,8 @@ require_once("interfaces.inc");
 require_once("services.inc");
 require_once("util.inc");
 
-$subsystem = !empty($argv[1]) ? $argv[1] : '';
-$type      = !empty($argv[2]) ? $argv[2] : '';
-$type      = strtoupper($type);
+$subsystem = $argv[1] ?? '';
+$type = strtoupper($argv[2] ?? '');
 
 $vhidX      = 1;
 $state_file = "/tmp/pppoe_toggle_ha.state";
@@ -183,7 +181,7 @@ function manage_dhcpdv6($mode): void
 
 function apply_carp_state($state): void
 {
-    global $config, $type, $vhidX, $state_file, $ifkey, $real_iface, $real_iface6, $pppoe_state, $is_enabled;
+    global $config, $type, $ifkey, $real_iface, $real_iface6, $pppoe_state, $is_enabled;
 
     switch ($state) {
     case 'MASTER':
@@ -232,21 +230,6 @@ function apply_carp_state($state): void
     default:
         break;
     }
-    
-    $new_state = "@{$vhidX}|{$state}";
-    $fp = fopen($state_file, 'c+');
-    if ($fp === false) {
-        return;
-    }
-    if (!flock($fp, LOCK_EX)) {
-        fclose($fp);
-        return;
-    }
-    ftruncate($fp, 0);
-    rewind($fp);
-    fwrite($fp, $new_state);
-    flock($fp, LOCK_UN);
-    fclose($fp);
 }
 
 
@@ -290,6 +273,27 @@ if (!in_array($type, ['MASTER', 'BACKUP', 'INIT'])) {
 if ($vhid !== $vhidX) {
     exit(0);
 }
+
+$new_state = "{$subsystem}|{$type}";
+$fp = fopen($state_file, 'c+');
+if ($fp === false) {
+    exit(1);
+}
+if (!flock($fp, LOCK_EX)) {
+    fclose($fp);
+    exit(1);
+}
+$old_state = stream_get_contents($fp);
+if ($old_state === $new_state) {
+    flock($fp, LOCK_UN);
+    fclose($fp);
+    exit(0);
+}
+ftruncate($fp, 0);
+rewind($fp);
+fwrite($fp, $new_state);
+flock($fp, LOCK_UN);
+fclose($fp);
 
 
 // MAIN
