@@ -2,7 +2,12 @@
 <?php
 /**
  * pppoe_toggle_ha — WAN interface management for CARP failover events on pfSense 2.9.0
- * Version: 0.1 beta
+ *
+ * @package pppoe_toggle_ha
+ * @author f-link4
+ * @version 0.1 beta
+ * @license MIT
+ * @link https://github.com/f-link4/pppoe_toggle_ha
  */
 
 // ============================================================
@@ -248,7 +253,7 @@ if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONCILE') {
 // RECONNECT
 
 if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONNECT') {
-    if (!$pppoe_state['active']) {
+    if ($pppoe_state['active']) {
         interface_configure($ifkey);
         exit(0);
     }
