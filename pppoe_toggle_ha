@@ -179,6 +179,32 @@ function manage_dhcpdv6($mode): void
     }
 }
 
+function update_state_file($state): void
+{
+    global $vhidX, $state_file;
+
+    $new_state = "@{$vhidX}|{$state}";
+    $fp = fopen($state_file, 'c+');
+    if ($fp === false) {
+        return;
+    }
+    if (!flock($fp, LOCK_EX)) {
+        fclose($fp);
+        return;
+    }
+    $old_state = stream_get_contents($fp);
+    if ($old_state === $new_state) {
+        flock($fp, LOCK_UN);
+        fclose($fp);
+        return;
+    }
+    ftruncate($fp, 0);
+    rewind($fp);
+    fwrite($fp, $new_state);
+    flock($fp, LOCK_UN);
+    fclose($fp);
+}
+
 function apply_carp_state($state): void
 {
     global $config, $type, $ifkey, $real_iface, $real_iface6, $pppoe_state, $is_enabled;
@@ -190,7 +216,7 @@ function apply_carp_state($state): void
             //mwexec("/etc/rc.linkup start ".escapeshellarg($ifkey)."");
             if (!$is_enabled) {
                 $config['interfaces'][$ifkey]['enable'] = '1';
-                write_config("enable interface '{$ifkey}' due CARP event '{$type}'", false);
+                write_config("enable interface '{$ifkey}' due CARP event '{$state}'", false);
                 interface_configure($ifkey);
             }
 
@@ -214,7 +240,7 @@ function apply_carp_state($state): void
             manage_dhcpdv6('disable');
             if ($is_enabled) {
                 unset($config['interfaces'][$ifkey]['enable']);
-                write_config("disable interface '{$ifkey}' due CARP event '{$type}'", false);
+                write_config("disable interface '{$ifkey}' due CARP event '{$state}'", false);
                 interface_configure($ifkey);
             }
             //mwexec("/etc/rc.linkup stop ".escapeshellarg($ifkey)."");
@@ -230,6 +256,7 @@ function apply_carp_state($state): void
     default:
         break;
     }
+update_state_file($state);
 }
 
 
@@ -243,7 +270,6 @@ $is_enabled = isset($config['interfaces'][$ifkey]['enable']);
 // RECONCILE
 
 if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONCILE') {
-    @unlink($state_file);
     apply_carp_state($carp_state);
     exit(0);
 }
@@ -275,26 +301,13 @@ if ($vhid !== $vhidX) {
     exit(0);
 }
 
-$new_state = "{$subsystem}|{$type}";
-$fp = fopen($state_file, 'c+');
-if ($fp === false) {
-    exit(1);
+$new_state = "@{$vhidX}|{$type}";
+if (file_exists($state_file)) {
+    $old_state = trim(file_get_contents($state_file));
+    if ($old_state === $new_state) {
+        exit(0);
+    }
 }
-if (!flock($fp, LOCK_EX)) {
-    fclose($fp);
-    exit(1);
-}
-$old_state = stream_get_contents($fp);
-if ($old_state === $new_state) {
-    flock($fp, LOCK_UN);
-    fclose($fp);
-    exit(0);
-}
-ftruncate($fp, 0);
-rewind($fp);
-fwrite($fp, $new_state);
-flock($fp, LOCK_UN);
-fclose($fp);
 
 
 // MAIN
