@@ -30,6 +30,19 @@ else
     exit 1
 fi
 
+DEFAULT_VHID=1
+echo ""
+read -p "Please choose the CARP VHID (default: ${DEFAULT_VHID}): " USER_VHID
+USER_VHID=${USER_VHID:-$DEFAULT_VHID}
+
+if ! [[ "$USER_VHID" =~ ^[0-9]+$ ]]; then
+    echo "Error: VHID must be a number. Using default: ${DEFAULT_VHID}"
+    USER_VHID=$DEFAULT_VHID
+fi
+echo "Setting VHID to ${USER_VHID}..."
+sed -i "s/\$vhidX\s*=\s*[0-9]\+;/\$vhidX = ${USER_VHID};/" pppoe_toggle_ha
+echo ""
+
 echo "Installing files..."
 cp -v pppoe_toggle_ha /usr/local/sbin/
 chmod 755 /usr/local/sbin/pppoe_toggle_ha
