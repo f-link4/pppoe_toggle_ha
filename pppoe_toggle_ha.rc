@@ -8,6 +8,9 @@
 name="pppoe_toggle_ha"
 rcvar="${name}_enable"
 
+command="/usr/local/sbin/pppoe_toggle_ha"
+command_args="reconcile"
+
 load_rc_config $name
 
 : ${pppoe_toggle_ha_enable:=YES}
@@ -17,10 +20,8 @@ stop_cmd=":"
 
 pppoe_toggle_ha_start()
 {
-    if service devd rcvar >/dev/null 2>&1; then
-        service devd reload >/dev/null 2>&1
-    fi
-    /usr/local/sbin/pppoe_toggle_ha reconcile >/dev/null 2>&1
+    ervice devd reload >/dev/null 2>&1 || true
+    ${command} ${command_args} >/dev/null 2>&1 || true
 }
 
 run_rc_command "$1"
