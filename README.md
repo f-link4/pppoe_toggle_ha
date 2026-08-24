@@ -22,3 +22,9 @@ fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/main/install.sh | sh
 ```bash
 fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/main/uninstall.sh | sh
 ```
+
+## Support
+
+If this project saves you time, consider buying me a coffee:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/f_link4)
