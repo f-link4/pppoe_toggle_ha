@@ -10,9 +10,6 @@
  * @link https://github.com/f-link4/pppoe_toggle_ha
  */
 
-
-// USAGE
-
 if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help'])) {
     echo "=======================================================================\n";
     echo "  PPPoE Toggle HA — WAN interface management for CARP failover events\n";
@@ -27,7 +24,6 @@ if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help']))
     exit(0);
 }
 
-
 require_once("config.inc");
 require_once("interfaces.inc");
 require_once("services.inc");
@@ -38,14 +34,10 @@ $type = strtoupper($argv[2] ?? '');
 
 $vhidX      = 1;
 $state_file = "/tmp/pppoe_toggle_ha.state";
-$ip_timeout = 120;
 $ifkey      = 'wan';
 $real_iface = get_real_interface($ifkey, "inet");
-$real_iface6 = get_real_interface($ifkey, "inet6");
 $track_ifaces = link_interface_to_track6($ifkey);
 
-
-// FUNCTIONS
 
 function pppoe_state($real_iface) {
     $out = [];
@@ -72,36 +64,6 @@ function pppoe_state($real_iface) {
         'ip4' => $ip4,
         'ip6' => $ip6,
     ];
-}
-
-function wait_for_wan_ip4(): bool
-{
-    global $ifkey, $ip_timeout;
-
-    for ($s = 0; $s < $ip_timeout; $s++) {
-        $ip4 = get_interface_ip($ifkey);
-        if (!empty($ip4) && $ip4 !== "0.0.0.0") {
-            return true;
-        }
-        sleep(1);
-    }
-
-    return false;
-}
-
-function wait_for_wan_ip6(): bool
-{
-    global $ifkey, $ip_timeout;
-
-    for ($s = 0; $s < $ip_timeout; $s++) {
-        $ip6 = get_interface_ipv6($ifkey);
-        if (!empty($ip6) && strpos($ip6, 'fe80:') !== 0) {
-            return true;
-        }
-        sleep(1);
-    }
-
-    return false;
 }
 
 function flush_lan_ipv6(): void
@@ -207,31 +169,17 @@ function update_state_file($state): void
 
 function apply_carp_state($state): void
 {
-    global $config, $type, $ifkey, $real_iface, $real_iface6, $pppoe_state, $is_enabled;
+    global $config, $type, $ifkey, $real_iface, $pppoe_state, $is_enabled;
 
     switch ($state) {
     case 'MASTER':
         if (!$pppoe_state['active']) {
-            //mwexec("/usr/local/sbin/pfSctl -c 'interface reload ".escapeshellarg($ifkey)."'");
-            //mwexec("/etc/rc.linkup start ".escapeshellarg($ifkey)."");
             if (!$is_enabled) {
                 $config['interfaces'][$ifkey]['enable'] = '1';
                 write_config("enable interface '{$ifkey}' due CARP event '{$state}'", false);
                 interface_configure($ifkey);
             }
-
-            //if (wait_for_wan_ip4()) {
-            //    interface_dhcpv6_configure($real_iface6, $config['interfaces'][$ifkey], true);
-            //} else {
-            //    exit(0);
-            //}
-
-            //if (!wait_for_wan_ip6()) {
-            //    interface_dhcpv6_configure($real_iface6, $config['interfaces'][$ifkey], false);
-            //}
-
             manage_dhcpdv6('enable');
-            //kill_states_on_interface($real_iface);
         }
         break;
 
@@ -243,7 +191,6 @@ function apply_carp_state($state): void
                 write_config("disable interface '{$ifkey}' due CARP event '{$state}'", false);
                 interface_configure($ifkey);
             }
-            //mwexec("/etc/rc.linkup stop ".escapeshellarg($ifkey)."");
             mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " down");
             kill_states_on_interface($real_iface);
             flush_wan_ipv6();
@@ -260,22 +207,16 @@ update_state_file($state);
 }
 
 
-// STATES
-
 $carp_state = trim(shell_exec("/sbin/ifconfig -a | grep 'carp:' | grep 'vhid " . $vhidX . "' | awk '{print $2}'"));
 $pppoe_state = pppoe_state($real_iface);
 $is_enabled = isset($config['interfaces'][$ifkey]['enable']);
 
-
-// RECONCILE
 
 if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONCILE') {
     apply_carp_state($carp_state);
     exit(0);
 }
 
-
-// RECONNECT
 
 if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONNECT') {
     if ($pppoe_state['active']) {
@@ -284,8 +225,6 @@ if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONNECT') {
     }
 }
 
-
-// CHECKS
 
 if (preg_match('/@(\d+)$/', $subsystem, $matches) || preg_match('/^(\d+)@/', $subsystem, $matches)) {
     $vhid = (int)$matches[1];
@@ -309,7 +248,5 @@ if (file_exists($state_file)) {
     }
 }
 
-
-// MAIN
 
 apply_carp_state($type);
