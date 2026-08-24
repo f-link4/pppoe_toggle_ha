@@ -1,14 +1,5 @@
 #!/usr/local/bin/php
 <?php
-/**
- * pppoe_toggle_ha — WAN interface management for CARP failover events on pfSense 2.9.0
- *
- * @package pppoe_toggle_ha
- * @author f-link4
- * @version 0.1 beta
- * @license MIT
- * @link https://github.com/f-link4/pppoe_toggle_ha
- */
 
 if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help'])) {
     echo "=======================================================================\n";
@@ -38,8 +29,11 @@ $ifkey      = 'wan';
 $real_iface = get_real_interface($ifkey, "inet");
 $track_ifaces = link_interface_to_track6($ifkey);
 
-
 function pppoe_state($real_iface) {
+    if (empty($real_iface)) {
+        return ['active' => false, 'ip4' => false, 'ip6' => false];
+    }
+
     $out = [];
     @exec("/sbin/ifconfig " . escapeshellarg($real_iface) . " 2>&1", $out);
 
@@ -47,13 +41,16 @@ function pppoe_state($real_iface) {
     $ip6 = false;
 
     foreach ($out as $line) {
-        if (preg_match('/^\s*inet\s+\S+\s+-->\s+\S+/', $line)) {
-            $ip4 = true;
-            continue;
+        if (preg_match('/\binet\s+([0-9]{1,3}(?:\.[0-9]{1,3}){3})/', $line, $m)) {
+            $addr = $m[1];
+            if (filter_var($addr, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && $addr !== '0.0.0.0' && $addr !== '127.0.0.1') {
+                $ip4 = true;
+                continue;
+            }
         }
-        if (preg_match('/^\s*inet6\s+([0-9a-f:]+)/i', $line, $m)) {
-            $addr = strtolower($m[1]);
-            if (strpos($addr, 'fe80:') !== 0 && stripos($line, 'tentative') === false) {
+        if (preg_match('/\binet6\s+([0-9a-fA-F:]+)(?:%[^\s]+)?/i', $line, $m6)) {
+            $addr = explode('%', $m6[1])[0];
+            if (stripos($addr, 'fe80') !== 0 && filter_var($addr, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
                 $ip6 = true;
             }
         }
@@ -82,8 +79,11 @@ function flush_lan_ipv6(): void
         $real_iface = get_real_interface($iface, 'inet6');
         $ip6 = get_interface_ipv6($iface);
 
-        if (!empty($ip6) && is_ipaddrv6($ip6)) {
-            mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " inet6 {$ip6} delete", true);
+        if (!empty($ip6)) {
+            $addr = explode('%', $ip6)[0];
+            if (filter_var($addr, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+                mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " inet6 " . escapeshellarg($addr) . " delete", true);
+            }
         }
     }
 }
@@ -92,10 +92,23 @@ function flush_wan_ipv6(): void
 {
     global $real_iface;
 
-    preg_match_all('/inet6\s+([0-9a-f:]+)/i', shell_exec("/sbin/ifconfig " . escapeshellarg($real_iface) . " inet6"), $m) 
-    && array_map(function($ip6) use ($real_iface) {
-        mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " inet6 " . escapeshellarg($ip6) . " delete", true);
-    }, $m[1] ?? []);
+    if (empty($real_iface)) {
+        return;
+    }
+
+    $out = shell_exec("/sbin/ifconfig " . escapeshellarg($real_iface) . " inet6 2>/dev/null");
+    if (empty($out)) {
+        return;
+    }
+
+    if (preg_match_all('/inet6\s+([0-9a-fA-F:]+)(?:%[^\s]+)?/i', $out, $m)) {
+        foreach ($m[1] as $ip6) {
+            $addr = explode('%', $ip6)[0];
+            if (stripos($addr, 'fe80') === false && filter_var($addr, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+                mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " inet6 " . escapeshellarg($addr) . " delete", true);
+            }
+        }
+    }
 }
 
 function kill_states_on_interface($iface)
@@ -154,7 +167,8 @@ function update_state_file($state): void
         fclose($fp);
         return;
     }
-    $old_state = stream_get_contents($fp);
+    rewind($fp);
+    $old_state = trim(stream_get_contents($fp));
     if ($old_state === $new_state) {
         flock($fp, LOCK_UN);
         fclose($fp);
@@ -172,59 +186,68 @@ function apply_carp_state($state): void
     global $config, $type, $ifkey, $real_iface, $pppoe_state, $is_enabled;
 
     switch ($state) {
-    case 'MASTER':
-        if (!$pppoe_state['active']) {
-            if (!$is_enabled) {
-                $config['interfaces'][$ifkey]['enable'] = '1';
-                write_config("enable interface '{$ifkey}' due CARP event '{$state}'", false);
-                interface_configure($ifkey);
+        case 'MASTER':
+            if (!$pppoe_state['active']) {
+                if (!$is_enabled) {
+                    $config['interfaces'][$ifkey]['enable'] = '1';
+                    write_config("enable interface '{$ifkey}' due CARP event '{$state}'", false);
+                    interface_configure($ifkey);
+                }
+                manage_dhcpdv6('enable');
             }
-            manage_dhcpdv6('enable');
-        }
-        break;
+            break;
 
-    case 'BACKUP':
-        if ($pppoe_state['active']) {
-            manage_dhcpdv6('disable');
-            if ($is_enabled) {
-                unset($config['interfaces'][$ifkey]['enable']);
-                write_config("disable interface '{$ifkey}' due CARP event '{$state}'", false);
-                interface_configure($ifkey);
+        case 'BACKUP':
+            if ($pppoe_state['active']) {
+                manage_dhcpdv6('disable');
+                if ($is_enabled) {
+                    unset($config['interfaces'][$ifkey]['enable']);
+                    write_config("disable interface '{$ifkey}' due CARP event '{$state}'", false);
+                    interface_configure($ifkey);
+                }
+                mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " down");
+                kill_states_on_interface($real_iface);
+                flush_wan_ipv6();
+                flush_lan_ipv6();
             }
-            mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " down");
-            kill_states_on_interface($real_iface);
-            flush_wan_ipv6();
-            flush_lan_ipv6();
-        }
-        break;
+            break;
 
-    case 'INIT':
-
-    default:
-        break;
+        case 'INIT':
+        default:
+            break;
     }
-update_state_file($state);
+    update_state_file($state);
 }
 
+$carp_state = '';
+$ifout = shell_exec("/sbin/ifconfig -a 2>/dev/null");
+if ($ifout !== null) {
+    if (preg_match_all('/carp:([^\n]+)/i', $ifout, $blocks)) {
+        foreach ($blocks[1] as $blk) {
+            if (preg_match('/vhid\s+' . preg_quote((string)$vhidX, '/') . '/i', $blk)) {
+                if (preg_match('/\b(MASTER|BACKUP|INIT)\b/i', $blk, $s)) {
+                    $carp_state = strtoupper($s[1]);
+                    break;
+                }
+            }
+        }
+    }
+}
 
-$carp_state = trim(shell_exec("/sbin/ifconfig -a | grep 'carp:' | grep 'vhid " . $vhidX . "' | awk '{print $2}'"));
 $pppoe_state = pppoe_state($real_iface);
 $is_enabled = isset($config['interfaces'][$ifkey]['enable']);
-
 
 if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONCILE') {
     apply_carp_state($carp_state);
     exit(0);
 }
 
-
 if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONNECT') {
     if ($pppoe_state['active']) {
         interface_configure($ifkey);
-        exit(0);
     }
+    exit(0);
 }
-
 
 if (preg_match('/@(\d+)$/', $subsystem, $matches) || preg_match('/^(\d+)@/', $subsystem, $matches)) {
     $vhid = (int)$matches[1];
@@ -241,12 +264,19 @@ if ($vhid !== $vhidX) {
 }
 
 $new_state = "@{$vhidX}|{$type}";
-if (file_exists($state_file)) {
-    $old_state = trim(file_get_contents($state_file));
-    if ($old_state === $new_state) {
-        exit(0);
+$fp = @fopen($state_file, 'c+');
+if ($fp !== false) {
+    if (flock($fp, LOCK_EX)) {
+        rewind($fp);
+        $old_state = trim(stream_get_contents($fp));
+        if ($old_state === $new_state) {
+            flock($fp, LOCK_UN);
+            fclose($fp);
+            exit(0);
+        }
+        flock($fp, LOCK_UN);
     }
+    fclose($fp);
 }
-
 
 apply_carp_state($type);
