@@ -38,7 +38,7 @@ else
 fi
 
 DEFAULT_VHID=1
-printf "\nPlease choose the CARP VHID (default: %s): " "$DEFAULT_VHID"
+printf "\nPlease choose the CARP VHID the pppoe toggle will react on (default: %s): " "$DEFAULT_VHID"
 read USER_VHID < /dev/tty
 USER_VHID=${USER_VHID:-$DEFAULT_VHID}
 
