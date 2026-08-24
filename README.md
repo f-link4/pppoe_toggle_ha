@@ -16,3 +16,9 @@ PPPoE Toggle HA — WAN interface management for CARP failover events on pfSense
 
 ```bash
 fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/main/install.sh | sh
+```
+
+## Uninstall
+```bash
+fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/main/uninstall.sh | sh
+```
