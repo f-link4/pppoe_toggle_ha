@@ -183,7 +183,7 @@ function manage_dhcpdv6($mode): void
 
 function apply_carp_state($state): void
 {
-    global $config, $type, $ifkey, $real_iface, $real_iface6, $pppoe_state, $is_enabled;
+    global $config, $type, $vhidX, $state_file, $ifkey, $real_iface, $real_iface6, $pppoe_state, $is_enabled;
 
     switch ($state) {
     case 'MASTER':
