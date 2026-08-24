@@ -1,0 +1,298 @@
+#!/usr/local/bin/php
+<?php
+/**
+ * pppoe_toggle_ha — WAN interface management for CARP failover events on pfSense 2.9.0
+ * Version: 0.1 beta
+ */
+
+// ============================================================
+// USAGE
+// ============================================================
+
+if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help'])) {
+    echo "=======================================================================\n";
+    echo "  PPPoE Toggle HA — WAN interface management for CARP failover events\n";
+    echo "=======================================================================\n";
+    echo "Usage:\n";
+    echo "  ./pppoe_toggle_ha @<VHID> MASTER    - Enable WAN (CARP MASTER)\n";
+    echo "  ./pppoe_toggle_ha @<VHID> BACKUP    - Disable WAN (CARP BACKUP)\n";
+    echo "  ./pppoe_toggle_ha RECONCILE         - Check and fix state at boot\n";
+    echo "  ./pppoe_toggle_ha RECONNECT         - Force WAN reconnect\n";
+    echo "  ./pppoe_toggle_ha help              - Show this help\n";
+    echo "=======================================================================\n";
+    exit(0);
+}
+
+
+require_once("config.inc");
+require_once("interfaces.inc");
+require_once("services.inc");
+require_once("util.inc");
+
+$subsystem = !empty($argv[1]) ? $argv[1] : '';
+$type      = !empty($argv[2]) ? $argv[2] : '';
+$type      = strtoupper($type);
+
+$vhidX      = 1;
+$state_file = "/tmp/pppoe_toggle_ha.state";
+$ip_timeout = 120;
+$ifkey      = 'wan';
+$real_iface = get_real_interface($ifkey, "inet");
+$real_iface6 = get_real_interface($ifkey, "inet6");
+$track_ifaces = link_interface_to_track6($ifkey);
+
+
+// FUNCTIONS
+
+function pppoe_state($real_iface) {
+    $out = [];
+    @exec("/sbin/ifconfig " . escapeshellarg($real_iface) . " 2>&1", $out);
+
+    $ip4 = false;
+    $ip6 = false;
+
+    foreach ($out as $line) {
+        if (preg_match('/^\s*inet\s+\S+\s+-->\s+\S+/', $line)) {
+            $ip4 = true;
+            continue;
+        }
+        if (preg_match('/^\s*inet6\s+([0-9a-f:]+)/i', $line, $m)) {
+            $addr = strtolower($m[1]);
+            if (strpos($addr, 'fe80:') !== 0 && stripos($line, 'tentative') === false) {
+                $ip6 = true;
+            }
+        }
+    }
+
+    return [
+        'active' => ($ip4 || $ip6),
+        'ip4' => $ip4,
+        'ip6' => $ip6,
+    ];
+}
+
+function wait_for_wan_ip4(): bool
+{
+    global $ifkey, $ip_timeout;
+
+    for ($s = 0; $s < $ip_timeout; $s++) {
+        $ip4 = get_interface_ip($ifkey);
+        if (!empty($ip4) && $ip4 !== "0.0.0.0") {
+            return true;
+        }
+        sleep(1);
+    }
+
+    return false;
+}
+
+function wait_for_wan_ip6(): bool
+{
+    global $ifkey, $ip_timeout;
+
+    for ($s = 0; $s < $ip_timeout; $s++) {
+        $ip6 = get_interface_ipv6($ifkey);
+        if (!empty($ip6) && strpos($ip6, 'fe80:') !== 0) {
+            return true;
+        }
+        sleep(1);
+    }
+
+    return false;
+}
+
+function flush_lan_ipv6(): void
+{
+    global $config, $ifkey, $track_ifaces;
+
+    if (empty($track_ifaces)) {
+        return;
+    }
+
+    foreach ($track_ifaces as $iface => $ifcfg) {
+        if (empty($config['interfaces'][$iface])) {
+            continue;
+        }
+
+        $real_iface = get_real_interface($iface, 'inet6');
+        $ip6 = get_interface_ipv6($iface);
+
+        if (!empty($ip6) && is_ipaddrv6($ip6)) {
+            mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " inet6 {$ip6} delete", true);
+        }
+    }
+}
+
+function flush_wan_ipv6(): void
+{
+    global $real_iface;
+
+    preg_match_all('/inet6\s+([0-9a-f:]+)/i', shell_exec("/sbin/ifconfig " . escapeshellarg($real_iface) . " inet6"), $m) 
+    && array_map(function($ip6) use ($real_iface) {
+        mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " inet6 " . escapeshellarg($ip6) . " delete", true);
+    }, $m[1] ?? []);
+}
+
+function kill_states_on_interface($iface)
+{
+    pfSense_kill_states("0.0.0.0/0", $iface);
+    pfSense_kill_states("::/0", $iface);
+}
+
+function manage_dhcpdv6($mode): void
+{
+    global $config, $ifkey, $track_ifaces;
+
+    if (empty($track_ifaces)) {
+        return;
+    }
+
+    $changed = false;
+    foreach (array_keys($track_ifaces) as $if) {
+        if ($mode === 'enable') {
+            if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== 'assist') {
+                $config['dhcpdv6'][$if]['ramode'] = 'assist';
+                $changed = true;
+            }
+            if (!isset($config['dhcpdv6'][$if]['enable'])) {
+                $config['dhcpdv6'][$if]['enable'] = '';
+                $changed = true;
+            }
+        } else {
+            if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== 'disabled') {
+                $config['dhcpdv6'][$if]['ramode'] = 'disabled';
+                $changed = true;
+            }
+            if (isset($config['dhcpdv6'][$if]['enable'])) {
+                unset($config['dhcpdv6'][$if]['enable']);
+                $changed = true;
+            }
+        }
+    }
+
+    if ($changed) {
+        write_config("CARP: " . ($mode === 'enable' ? 'Enabled' : 'Disabled') . " radvd+DHCPv6 on " . implode(',', array_keys($track_ifaces)), false);
+        services_radvd_configure();
+    }
+}
+
+function apply_carp_state($state): void
+{
+    global $config, $type, $ifkey, $real_iface, $real_iface6, $pppoe_state, $is_enabled;
+
+    switch ($state) {
+    case 'MASTER':
+        if (!$pppoe_state['active']) {
+            //mwexec("/usr/local/sbin/pfSctl -c 'interface reload ".escapeshellarg($ifkey)."'");
+            //mwexec("/etc/rc.linkup start ".escapeshellarg($ifkey)."");
+            if (!$is_enabled) {
+                $config['interfaces'][$ifkey]['enable'] = '1';
+                write_config("enable interface '{$ifkey}' due CARP event '{$type}'", false);
+                interface_configure($ifkey);
+            }
+
+            //if (wait_for_wan_ip4()) {
+            //    interface_dhcpv6_configure($real_iface6, $config['interfaces'][$ifkey], true);
+            //} else {
+            //    exit(0);
+            //}
+
+            //if (!wait_for_wan_ip6()) {
+            //    interface_dhcpv6_configure($real_iface6, $config['interfaces'][$ifkey], false);
+            //}
+
+            manage_dhcpdv6('enable');
+            //kill_states_on_interface($real_iface);
+        }
+        break;
+
+    case 'BACKUP':
+        if ($pppoe_state['active']) {
+            manage_dhcpdv6('disable');
+            if ($is_enabled) {
+                unset($config['interfaces'][$ifkey]['enable']);
+                write_config("disable interface '{$ifkey}' due CARP event '{$type}'", false);
+                interface_configure($ifkey);
+            }
+            //mwexec("/etc/rc.linkup stop ".escapeshellarg($ifkey)."");
+            mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " down");
+            kill_states_on_interface($real_iface);
+            flush_wan_ipv6();
+            flush_lan_ipv6();
+        }
+        break;
+
+    case 'INIT':
+
+    default:
+        break;
+    }
+}
+
+
+// STATES
+
+$carp_state = trim(shell_exec("/sbin/ifconfig -a | grep 'carp:' | grep 'vhid " . $vhidX . "' | awk '{print $2}'"));
+$pppoe_state = pppoe_state($real_iface);
+$is_enabled = isset($config['interfaces'][$ifkey]['enable']);
+
+
+// RECONCILE
+
+if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONCILE') {
+    apply_carp_state($carp_state);
+    exit(0);
+}
+
+
+// RECONNECT
+
+if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONNECT') {
+    if (!$pppoe_state['active']) {
+        interface_configure($ifkey);
+        exit(0);
+    }
+}
+
+
+// CHECKS
+
+if (preg_match('/@(\d+)$/', $subsystem, $matches) || preg_match('/^(\d+)@/', $subsystem, $matches)) {
+    $vhid = (int)$matches[1];
+} else {
+    exit(1);
+}
+
+if (!in_array($type, ['MASTER', 'BACKUP', 'INIT'])) {
+    exit(1);
+}
+
+if ($vhid !== $vhidX) {
+    exit(0);
+}
+
+$new_state = "{$subsystem}|{$type}";
+$fp = fopen($state_file, 'c+');
+if ($fp === false) {
+    exit(1);
+}
+if (!flock($fp, LOCK_EX)) {
+    fclose($fp);
+    exit(1);
+}
+$old_state = stream_get_contents($fp);
+if ($old_state === $new_state) {
+    flock($fp, LOCK_UN);
+    fclose($fp);
+    exit(0);
+}
+ftruncate($fp, 0);
+rewind($fp);
+fwrite($fp, $new_state);
+flock($fp, LOCK_UN);
+fclose($fp);
+
+
+// MAIN
+
+apply_carp_state($type);
