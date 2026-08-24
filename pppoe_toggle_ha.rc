@@ -1,0 +1,26 @@
+#!/bin/sh
+# PROVIDE: pppoe_toggle_ha
+# REQUIRE: DAEMON
+# KEYWORD: nojail
+
+. /etc/rc.subr
+
+name="pppoe_toggle_ha"
+rcvar="${name}_enable"
+
+load_rc_config $name
+
+: ${pppoe_toggle_ha_enable:=YES}
+
+start_cmd="pppoe_toggle_ha_start"
+stop_cmd=":"
+
+pppoe_toggle_ha_start()
+{
+    if service devd rcvar >/dev/null 2>&1; then
+        service devd reload >/dev/null 2>&1
+    fi
+    /usr/local/sbin/pppoe_toggle_ha reconcile >/dev/null 2>&1
+}
+
+run_rc_command "$1"
