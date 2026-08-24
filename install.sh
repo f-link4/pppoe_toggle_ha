@@ -31,11 +31,11 @@ else
 fi
 
 echo "Installing files..."
-cp pppoe_toggle_ha /usr/local/sbin/
+cp -v pppoe_toggle_ha /usr/local/sbin/
 chmod 755 /usr/local/sbin/pppoe_toggle_ha
-cp pppoe_toggle_ha.rc /usr/local/etc/rc.d/pppoe_toggle_ha
+cp -v pppoe_toggle_ha.rc /usr/local/etc/rc.d/pppoe_toggle_ha
 chmod 755 /usr/local/etc/rc.d/pppoe_toggle_ha
-cp pppoe_toggle_ha.conf /usr/local/etc/devd/
+cp -v pppoe_toggle_ha.conf /usr/local/etc/devd/
 chmod 644 /usr/local/etc/devd/pppoe_toggle_ha.conf
 
 echo "Configuring service..."
