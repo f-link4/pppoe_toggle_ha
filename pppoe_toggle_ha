@@ -154,31 +154,33 @@ function manage_dhcpdv6($mode): void
     }
 }
 
-function update_state_file($state): void
+function update_state_file($state, $write = false): bool
 {
     global $vhidX, $state_file;
 
     $new_state = "@{$vhidX}|{$state}";
     $fp = fopen($state_file, 'c+');
     if ($fp === false) {
-        return;
+        return true;
     }
-    if (!flock($fp, LOCK_EX)) {
-        fclose($fp);
-        return;
-    }
-    rewind($fp);
-    $old_state = trim(stream_get_contents($fp));
-    if ($old_state === $new_state) {
+
+    $changed = true;
+    if (flock($fp, LOCK_EX)) {
+        rewind($fp);
+        $old_state = trim(stream_get_contents($fp));
+        $changed = ($old_state !== $new_state);
+
+        if ($write && $changed) {
+            ftruncate($fp, 0);
+            rewind($fp);
+            fwrite($fp, $new_state);
+        }
+
         flock($fp, LOCK_UN);
-        fclose($fp);
-        return;
     }
-    ftruncate($fp, 0);
-    rewind($fp);
-    fwrite($fp, $new_state);
-    flock($fp, LOCK_UN);
     fclose($fp);
+
+    return $changed;
 }
 
 function apply_carp_state($state): void
@@ -216,7 +218,7 @@ function apply_carp_state($state): void
         default:
             break;
     }
-    update_state_file($state);
+    update_state_file($state, true);
 }
 
 $carp_state = '';
@@ -263,20 +265,8 @@ if ($vhid !== $vhidX) {
     exit(0);
 }
 
-$new_state = "@{$vhidX}|{$type}";
-$fp = @fopen($state_file, 'c+');
-if ($fp !== false) {
-    if (flock($fp, LOCK_EX)) {
-        rewind($fp);
-        $old_state = trim(stream_get_contents($fp));
-        if ($old_state === $new_state) {
-            flock($fp, LOCK_UN);
-            fclose($fp);
-            exit(0);
-        }
-        flock($fp, LOCK_UN);
-    }
-    fclose($fp);
+if (!update_state_file($type)) {
+    exit(0);
 }
 
 apply_carp_state($type);
