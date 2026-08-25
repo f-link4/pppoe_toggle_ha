@@ -1,5 +1,14 @@
 #!/usr/local/bin/php
 <?php
+/**
+ * pppoe_toggle_ha — WAN interface management for CARP failover events on pfSense 2.9.0
+ *
+ * @package pppoe_toggle_ha
+ * @author f-link4
+ * @version 0.1 beta
+ * @license MIT
+ * @link https://github.com/f-link4/pppoe_toggle_ha
+ */
 
 if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help'])) {
     echo "=======================================================================\n";
