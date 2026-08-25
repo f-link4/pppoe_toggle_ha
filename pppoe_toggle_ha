@@ -230,21 +230,7 @@ function apply_carp_state($state): void
     update_state_file($state, true);
 }
 
-$carp_state = '';
-$ifout = shell_exec("/sbin/ifconfig -a 2>/dev/null");
-if ($ifout !== null) {
-    if (preg_match_all('/carp:([^\n]+)/i', $ifout, $blocks)) {
-        foreach ($blocks[1] as $blk) {
-            if (preg_match('/vhid\s+' . preg_quote((string)$vhidX, '/') . '/i', $blk)) {
-                if (preg_match('/\b(MASTER|BACKUP|INIT)\b/i', $blk, $s)) {
-                    $carp_state = strtoupper($s[1]);
-                    break;
-                }
-            }
-        }
-    }
-}
-
+$carp_state = preg_match('/carp:\s+(MASTER|BACKUP|INIT)\s+vhid\s+' . preg_quote((string)$vhidX, '/') . '/i', shell_exec("/sbin/ifconfig -a 2>/dev/null"), $m) ? strtoupper($m[1]) : '';
 $pppoe_state = pppoe_state($real_iface);
 $is_enabled = isset($config['interfaces'][$ifkey]['enable']);
 
