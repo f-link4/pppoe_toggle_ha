@@ -25,6 +25,6 @@ fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/main/uninstall.sh | sh
 
 ## Support
 
-If this project saves you time, consider buying me a coffee:
+If this project saves you time, consider buying me a cookie:
 
 [![Buy me a Cookie](https://img.shields.io/badge/🍪%20Buy%20me%20a%20Cookie-ffdd00?style=for-the-badge&logoColor=black)](https://www.buymeacoffee.com/f_link4)
