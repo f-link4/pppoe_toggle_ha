@@ -61,10 +61,9 @@ if [ -n "$AUTO_VHID" ] && [ "$AUTO_VHID" -gt 0 ]; then
 else
     USER_VHID="$DEFAULT_VHID"
     echo "No CARP VHID found on LAN, using default VHID: ${USER_VHID}"
-	echo "To change VHID later reinstall or run pppoe_toggle_ha set_vhid <number>"
 fi
 
-echo "Setting VHID to ${USER_VHID}..."
+echo "To change VHID later reinstall or run pppoe_toggle_ha set_vhid <number>"
 
 awk -v v="$USER_VHID" '
   BEGIN{ replaced=0 }
