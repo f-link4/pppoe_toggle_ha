@@ -17,11 +17,32 @@ if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help']))
     echo "Usage:\n";
     echo "  pppoe_toggle_ha @<VHID> MASTER    - Enable WAN (CARP MASTER)\n";
     echo "  pppoe_toggle_ha @<VHID> BACKUP    - Disable WAN (CARP BACKUP)\n";
-    echo "  pppoe_toggle_ha RECONCILE         - Check and fix state at boot\n";
+    echo "  pppoe_toggle_ha RECONCILE         - Check and set state at boot\n";
     echo "  pppoe_toggle_ha RECONNECT         - Force WAN reconnect\n";
+    echo "  pppoe_toggle_ha set_vhid <number> - Set VHID to react on\n";
     echo "  pppoe_toggle_ha help              - Show this help\n";
     echo "=======================================================================\n";
     exit(0);
+}
+
+if (isset($argv[1]) && strtolower($argv[1]) === 'set_vhid') {
+    if (!isset($argv[2]) || !is_numeric($argv[2])) {
+        echo "Usage: pppoe_toggle_ha set_vhid <number>\n";
+        exit(1);
+    }
+    $new_vhid = (int)$argv[2];
+    $script = file_get_contents(__FILE__);
+    $pattern = '/^(\$vhidX\s*=\s*)\d+\s*;/m';
+    if (preg_match($pattern, $script, $matches)) {
+        $new_line = $matches[1] . $new_vhid . ';';
+        $script = preg_replace($pattern, $new_line, $script);
+        file_put_contents(__FILE__, $script);
+        echo "VHID updated to {$new_vhid}\n";
+        exit(0);
+    } else {
+        echo "Error: Could not find \$vhidX definition in script.\n";
+        exit(1);
+    }
 }
 
 require_once("config.inc");
