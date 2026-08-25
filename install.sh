@@ -37,15 +37,33 @@ else
     exit 1
 fi
 
-DEFAULT_VHID=1
-printf "\nPlease choose the CARP VHID the pppoe toggle will react on (default: %s): " "$DEFAULT_VHID"
-read USER_VHID < /dev/tty
-USER_VHID=${USER_VHID:-$DEFAULT_VHID}
+detect_vhid() {
+    php -r '
+        $xml = simplexml_load_file("/conf/config.xml");
+        $found = 0;
+        foreach ($xml->virtualip->vip as $vip) {
+            if ((string)$vip->interface == "lan" && (string)$vip->mode == "carp") {
+                echo (int)$vip->vhid;
+                $found = 1;
+                break;
+            }
+        }
+        if (!$found) echo "";
+    ' 2>/dev/null
+}
 
-if ! echo "$USER_VHID" | grep -Eq '^[0-9]+$'; then
-    echo "Error: VHID must be a number. Using default: ${DEFAULT_VHID}"
-    USER_VHID=$DEFAULT_VHID
+AUTO_VHID=$(detect_vhid)
+DEFAULT_VHID=1
+
+if [ -n "$AUTO_VHID" ] && [ "$AUTO_VHID" -gt 0 ]; then
+    USER_VHID="$AUTO_VHID"
+    echo "Detected CARP VHID on LAN interface: ${USER_VHID}"
+else
+    USER_VHID="$DEFAULT_VHID"
+    echo "No CARP VHID found on LAN, using default VHID: ${USER_VHID}"
+	echo "To change VHID later reinstall or run pppoe_toggle_ha set_vhid <number>"
 fi
+
 echo "Setting VHID to ${USER_VHID}..."
 
 awk -v v="$USER_VHID" '
@@ -61,6 +79,7 @@ awk -v v="$USER_VHID" '
 
 echo ""
 echo "Installing files..."
+mkdir -p /usr/local/etc/devd
 install -m 0755 -v pppoe_toggle_ha /usr/local/sbin/ || exit 1
 install -m 0755 -v pppoe_toggle_ha.rc /usr/local/etc/rc.d/pppoe_toggle_ha || true
 install -m 0644 -v pppoe_toggle_ha.conf /usr/local/etc/devd/pppoe_toggle_ha.conf || true
