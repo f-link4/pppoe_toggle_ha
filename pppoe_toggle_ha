@@ -159,6 +159,7 @@ function manage_dhcpdv6($mode): void
 
     if ($changed) {
         write_config("CARP: " . ($mode === 'enable' ? 'Enabled' : 'Disabled') . " radvd+DHCPv6 on " . implode(',', array_keys($track_ifaces)), false);
+        services_dhcpdv6_configure();
         services_radvd_configure();
     }
 }
