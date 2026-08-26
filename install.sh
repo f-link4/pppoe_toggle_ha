@@ -19,23 +19,24 @@ trap cleanup EXIT
 
 cd "$TMPDIR" || exit 1
 
+BRANCH="${1:-main}"
+ARCHIVE="${BRANCH}.tar.gz"
+
 echo "Downloading PPPoE Toggle HA from GitHub..."
-fetch -o main.tar.gz https://github.com/f-link4/pppoe_toggle_ha/archive/main.tar.gz
-if [ $? -ne 0 ] || [ ! -s main.tar.gz ]; then
+fetch -o "$ARCHIVE" "https://github.com/f-link4/pppoe_toggle_ha/archive/$ARCHIVE"
+if [ $? -ne 0 ] || [ ! -s "$ARCHIVE" ]; then
     echo "Failed to download from GitHub"
     exit 1
 fi
 
-tar -xzf main.tar.gz
+tar -xzf "$ARCHIVE"
 
-if [ -d "pppoe_toggle_ha-main" ]; then
-    cd pppoe_toggle_ha-main || exit 1
-elif [ -d "pppoe_toggle_ha" ]; then
-    cd pppoe_toggle_ha || exit 1
-else
+EXTRACTED_DIR=$(tar -tzf "$ARCHIVE" | head -1 | cut -f1 -d"/")
+if [ -z "$EXTRACTED_DIR" ]; then
     echo "Failed to find extracted directory"
     exit 1
 fi
+cd "$EXTRACTED_DIR" || exit 1
 
 detect_vhid() {
     php -r '
