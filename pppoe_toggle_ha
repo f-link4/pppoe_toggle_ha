@@ -264,7 +264,11 @@ if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONCILE') {
 
 if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONNECT') {
     if ($pppoe_state['active']) {
-        interface_configure($ifkey);
+        mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " down");
+        //kill_states_on_interface($real_iface);
+        usleep(250000);
+        mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " up");
+        //interface_configure($ifkey);
     }
     exit(0);
 }
