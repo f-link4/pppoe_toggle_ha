@@ -19,7 +19,7 @@ trap cleanup EXIT
 
 cd "$TMPDIR" || exit 1
 
-BRANCH="${1:-main}"
+BRANCH="${1:-dev}"
 ARCHIVE="${BRANCH}.tar.gz"
 
 echo "Downloading PPPoE Toggle HA from GitHub..."
