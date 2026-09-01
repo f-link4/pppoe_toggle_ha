@@ -189,11 +189,11 @@ function update_state_file($state, $write = false): bool
 {
     global $vhidX, $state_file;
 
-    $new_state = "@{$vhidX}|{$state}";
-    $fp = fopen($state_file, 'c+');
-    if ($fp === false) {
-        return true;
-    }
+    //$new_state = "@{$vhidX}|{$state}";
+    //$fp = fopen($state_file, 'c+');
+    //if ($fp === false) {
+    //    return true;
+    //}
 
     $changed = true;
     if (flock($fp, LOCK_EX)) {
@@ -249,7 +249,7 @@ function apply_carp_state($state): void
         default:
             break;
     }
-    update_state_file($state, true);
+    //update_state_file($state, true);
 }
 
 $carp_state = preg_match('/carp:\s+(MASTER|BACKUP|INIT)\s+vhid\s+' . preg_quote((string)$vhidX, '/') . '/i', shell_exec("/sbin/ifconfig -a 2>/dev/null"), $m) ? strtoupper($m[1]) : '';
@@ -282,8 +282,8 @@ if ($vhid !== $vhidX) {
     exit(0);
 }
 
-if (!update_state_file($type)) {
-    exit(0);
-}
+//if (!update_state_file($type)) {
+//    exit(0);
+//}
 
 apply_carp_state($type);
