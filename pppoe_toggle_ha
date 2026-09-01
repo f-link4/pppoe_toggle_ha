@@ -250,9 +250,9 @@ function apply_carp_state($state): void
                 if ($is_enabled) {
                     unset($config['interfaces'][$ifkey]['enable']);
                     write_config("disable interface '{$ifkey}' due CARP event '{$state}'", false);
-                    //interface_configure($ifkey);
+                    interface_configure($ifkey);
                 }
-                mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " down");
+                //mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " down");
                 kill_states_on_interface($real_iface);
                 flush_wan_ipv6();
                 flush_lan_ipv6();
