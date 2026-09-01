@@ -61,7 +61,7 @@ $track_ifaces = link_interface_to_track6($ifkey);
 
 function check_cooldown() {
     $cooldown_file = '/tmp/pppoe_toggle_ha.cooldown';
-    $cooldown_sec = 30;
+    $cooldown_sec = 60;
     
     if (file_exists($cooldown_file)) {
         $last_run = (int)file_get_contents($cooldown_file);
