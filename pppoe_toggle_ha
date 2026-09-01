@@ -61,7 +61,7 @@ $track_ifaces = link_interface_to_track6($ifkey);
 
 function check_cooldown() {
     $cooldown_file = '/tmp/pppoe_toggle_ha.cooldown';
-    $cooldown_sec = 120;
+    $cooldown_sec = 240;
     
     if (file_exists($cooldown_file)) {
         $last_run = (int)file_get_contents($cooldown_file);
@@ -203,11 +203,11 @@ function update_state_file($state, $write = false): bool
 {
     global $vhidX, $state_file;
 
-    //$new_state = "@{$vhidX}|{$state}";
-    //$fp = fopen($state_file, 'c+');
-    //if ($fp === false) {
-    //    return true;
-    //}
+    $new_state = "@{$vhidX}|{$state}";
+    $fp = fopen($state_file, 'c+');
+    if ($fp === false) {
+        return true;
+    }
 
     $changed = true;
     if (flock($fp, LOCK_EX)) {
