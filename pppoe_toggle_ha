@@ -59,6 +59,20 @@ $ifkey      = 'wan';
 $real_iface = get_real_interface($ifkey, "inet");
 $track_ifaces = link_interface_to_track6($ifkey);
 
+function check_cooldown() {
+    $cooldown_file = '/tmp/pppoe_toggle_ha.cooldown';
+    $cooldown_sec = 30;
+    
+    if (file_exists($cooldown_file)) {
+        $last_run = (int)file_get_contents($cooldown_file);
+        if (time() - $last_run < $cooldown_sec) {
+            return false; // в кулдауне
+        }
+    }
+    file_put_contents($cooldown_file, time());
+    return true;
+}
+
 function pppoe_state($real_iface) {
     if (empty($real_iface)) {
         return ['active' => false, 'ip4' => false, 'ip6' => false];
@@ -285,5 +299,9 @@ if ($vhid !== $vhidX) {
 //if (!update_state_file($type)) {
 //    exit(0);
 //}
+
+if (!check_cooldown()) {
+    exit(0);
+}
 
 apply_carp_state($type);
