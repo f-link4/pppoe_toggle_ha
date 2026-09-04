@@ -36,12 +36,23 @@ if (isset($argv[1]) && strtolower($argv[1]) === 'set_vhid') {
     if (preg_match($pattern, $script, $matches)) {
         $new_line = $matches[1] . $new_vhid . ';';
         $script = preg_replace($pattern, $new_line, $script);
-        file_put_contents(__FILE__, $script);
-        echo "VHID updated to {$new_vhid}\n";
+        $bak = __FILE__ . '.bak.' . date('YmdHis');
+        if (!@copy(__FILE__, $bak)) {
+            echo "Warning: could not create backup {$bak}\n";
+        }
+        $tmp = __FILE__ . '.tmp.' . getmypid();
+        if (file_put_contents($tmp, $script) === false) {
+            echo "Error: failed to write temp file\n";
+            exit(1);
+        }
+        if (!@rename($tmp, __FILE__)) {
+            echo "Error: failed to install updated script\n";
+            @copy($bak, __FILE__);
+            exit(1);
+        }
+
+        echo "VHID updated to {$new_vhid} (backup: {$bak})\n";
         exit(0);
-    } else {
-        echo "Error: Could not find \$vhidX definition in script.\n";
-        exit(1);
     }
 }
 
@@ -55,32 +66,43 @@ $type = strtoupper($argv[2] ?? '');
 
 $vhidX = 1;
 $state_file = "/tmp/pppoe_toggle_ha.state";
+$cooldown_file = '/tmp/pppoe_toggle_ha.cooldown';
+$cooldown_sec = 10;
 $ip_timeout = 30;
 $ifkey      = 'wan';
 $real_iface = get_real_interface($ifkey, "inet");
 $track_ifaces = link_interface_to_track6($ifkey);
 
 function check_cooldown() {
-    $cooldown_file = '/tmp/pppoe_toggle_ha.cooldown';
-    $cooldown_sec = 10;
-    
-    if (file_exists($cooldown_file)) {
-        $last_run = (int)file_get_contents($cooldown_file);
-        if (time() - $last_run < $cooldown_sec) {
-            return false;
-        }
+    global $cooldown_file, $cooldown_sec;
+    $fp = fopen($cooldown_file, 'c+');
+    if ($fp === false) {
+        syslog(LOG_WARNING, "[pppoe_toggle_ha] cannot open cooldown file {$cooldown_file}");
+        return true;
     }
-    file_put_contents($cooldown_file, time());
-    return true;
+    $allowed = false;
+    if (flock($fp, LOCK_EX)) {
+        rewind($fp);
+        $last = (int)trim(stream_get_contents($fp));
+        if (time() - $last >= $cooldown_sec) {
+            ftruncate($fp, 0);
+            rewind($fp);
+            fwrite($fp, (string)time());
+            $allowed = true;
+        }
+        flock($fp, LOCK_UN);
+    }
+    fclose($fp);
+    return $allowed;
 }
 
-function pppoe_state($real_iface) {
-    if (empty($real_iface)) {
+function pppoe_state($ifkey) {
+    if (empty($ifkey)) {
         return ['active' => false, 'ip4' => false, 'ip6' => false];
     }
 
-    $ip4 = get_interface_ip($real_iface);
-    $ip6 = get_interface_ipv6($real_iface);
+    $ip4 = get_interface_ip($ifkey);
+    $ip6 = get_interface_ipv6($ifkey);
 
     $ip4 = !empty($ip4) && $ip4 !== '0.0.0.0' && $ip4 !== '127.0.0.1';
     $ip6 = !empty($ip6) && strpos($ip6, 'fe80:') !== 0;
@@ -96,12 +118,13 @@ function wait_for_wan_ip4(): bool
 {
     global $ifkey, $ip_timeout;
 
-    for ($s = 0; $s < $ip_timeout; $s++) {
+    $deadline = time() + $ip_timeout;
+    while (time() < $deadline) {
         $ip4 = get_interface_ip($ifkey);
         if (!empty($ip4) && $ip4 !== "0.0.0.0") {
             return true;
         }
-        sleep(1);
+        usleep(200000); // 200 ms
     }
 
     return false;
@@ -111,12 +134,13 @@ function wait_for_wan_ip6(): bool
 {
     global $ifkey, $ip_timeout;
 
-    for ($s = 0; $s < $ip_timeout; $s++) {
+    $deadline = time() + $ip_timeout;
+    while (time() < $deadline) {
         $ip6 = get_interface_ipv6($ifkey);
         if (!empty($ip6) && strpos($ip6, 'fe80:') !== 0) {
             return true;
         }
-        sleep(1);
+        usleep(200000); // 200 ms
     }
 
     return false;
@@ -257,14 +281,13 @@ function apply_carp_state($state): void
                 if (wait_for_wan_ip4()) {
                     interface_dhcpv6_configure($real_iface, $config['interfaces'][$ifkey], true);
                 } else {
-                    exit(0);
+                    exit(1);
                 }
 
                 if (!wait_for_wan_ip6()) {
                     interface_dhcpv6_configure($real_iface, $config['interfaces'][$ifkey], true);
                 }
 
-				
                 if (!$is_enabled) {
                     //$config['interfaces'][$ifkey]['enable'] = '1';
                     //write_config("enable interface '{$ifkey}' due CARP event '{$state}'", false);
@@ -272,8 +295,8 @@ function apply_carp_state($state): void
                 }
 
                 if (wait_for_wan_ip6()) {
-				    manage_dhcpdv6('enable');
-				}
+                    manage_dhcpdv6('enable');
+                }
 
             }
             break;
@@ -305,7 +328,7 @@ function apply_carp_state($state): void
 }
 
 $carp_state = preg_match('/carp:\s+(MASTER|BACKUP|INIT)\s+vhid\s+' . preg_quote((string)$vhidX, '/') . '/i', shell_exec("/sbin/ifconfig -a 2>/dev/null"), $m) ? strtoupper($m[1]) : '';
-$pppoe_state = pppoe_state($real_iface);
+$pppoe_state = pppoe_state($ifkey);
 $is_enabled = isset($config['interfaces'][$ifkey]['enable']);
 
 if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONCILE') {
