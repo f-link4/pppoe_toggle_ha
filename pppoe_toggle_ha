@@ -77,7 +77,6 @@ function check_cooldown() {
     global $cooldown_file, $cooldown_sec;
     $fp = fopen($cooldown_file, 'c+');
     if ($fp === false) {
-        syslog(LOG_WARNING, "[pppoe_toggle_ha] cannot open cooldown file {$cooldown_file}");
         return true;
     }
     $allowed = false;
