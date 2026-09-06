@@ -297,6 +297,8 @@ function apply_carp_state($state): void
                     manage_dhcpdv6('enable');
                 }
 
+                mwexec("/usr/local/sbin/pppoe_toggle_ha_master.sh");
+
             }
             break;
 
@@ -312,10 +314,13 @@ function apply_carp_state($state): void
                 }
 
                 mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " down");
-                kill_states_on_interface($real_iface);
 
+                kill_states_on_interface($real_iface);
                 flush_wan_ipv6();
                 flush_lan_ipv6();
+
+                mwexec("/usr/local/sbin/pppoe_toggle_ha_backup.sh");
+
             }
             break;
 
