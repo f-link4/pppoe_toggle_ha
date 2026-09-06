@@ -25,6 +25,7 @@ FILES="
 /usr/local/etc/rc.d/pppoe_toggle_ha
 /usr/local/etc/devd/pppoe_toggle_ha.conf
 /tmp/pppoe_toggle_ha.state
+/tmp/pppoe_toggle_ha.cooldown
 "
 for f in $FILES; do
     if [ -e "$f" ]; then
