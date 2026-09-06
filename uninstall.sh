@@ -20,6 +20,8 @@ fi
 echo "Removing files..."
 FILES="
 /usr/local/sbin/pppoe_toggle_ha
+/usr/local/sbin/pppoe_toggle_ha_master.sh
+/usr/local/sbin/pppoe_toggle_ha_backup.sh
 /usr/local/etc/rc.d/pppoe_toggle_ha
 /usr/local/etc/devd/pppoe_toggle_ha.conf
 /tmp/pppoe_toggle_ha.state
