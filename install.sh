@@ -19,7 +19,7 @@ trap cleanup EXIT
 
 cd "$TMPDIR" || exit 1
 
-BRANCH="${1:-dev}"
+BRANCH="${1:-main}"
 ARCHIVE="${BRANCH}.tar.gz"
 
 echo "Downloading PPPoE Toggle HA from GitHub..."
@@ -81,6 +81,8 @@ echo ""
 echo "Installing files..."
 mkdir -p /usr/local/etc/devd
 install -m 0755 -v pppoe_toggle_ha /usr/local/sbin/ || exit 1
+install -m 0755 -v pppoe_toggle_ha_master.sh /usr/local/sbin/pppoe_toggle_ha_master.sh || true
+install -m 0755 -v pppoe_toggle_ha_backup.sh /usr/local/sbin/pppoe_toggle_ha_backup.sh || true
 install -m 0755 -v pppoe_toggle_ha.rc /usr/local/etc/rc.d/pppoe_toggle_ha || true
 install -m 0644 -v pppoe_toggle_ha.conf /usr/local/etc/devd/pppoe_toggle_ha.conf || true
 
