@@ -288,8 +288,8 @@ function apply_carp_state($state): void
                 }
 
                 if (!$is_enabled) {
-                    $config['interfaces'][$ifkey]['enable'] = '1';
-                    write_config("enable interface '{$ifkey}' due CARP event '{$state}'", false);
+                    //$config['interfaces'][$ifkey]['enable'] = '1';
+                    //write_config("enable interface '{$ifkey}' due CARP event '{$state}'", false);
                     //interface_configure($ifkey);
                 }
 
@@ -308,8 +308,8 @@ function apply_carp_state($state): void
                 manage_dhcpdv6('disable');
 
                 if ($is_enabled) {
-                    unset($config['interfaces'][$ifkey]['enable']);
-                    write_config("disable interface '{$ifkey}' due CARP event '{$state}'", false);
+                    //unset($config['interfaces'][$ifkey]['enable']);
+                    //write_config("disable interface '{$ifkey}' due CARP event '{$state}'", false);
                     //interface_configure($ifkey);
                 }
 
