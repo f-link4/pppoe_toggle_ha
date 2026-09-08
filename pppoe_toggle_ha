@@ -214,26 +214,26 @@ function manage_dhcpdv6($mode): void
                 $config['dhcpdv6'][$if]['ramode'] = 'assist';
                 $changed = true;
             }
-            if (!isset($config['dhcpdv6'][$if]['enable'])) {
-                $config['dhcpdv6'][$if]['enable'] = '';
-                $changed = true;
-            }
+            //if (!isset($config['dhcpdv6'][$if]['enable'])) {
+            //    $config['dhcpdv6'][$if]['enable'] = '';
+            //    $changed = true;
+            //}
         } else {
             if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== 'disabled') {
                 $config['dhcpdv6'][$if]['ramode'] = 'disabled';
                 $changed = true;
             }
-            if (isset($config['dhcpdv6'][$if]['enable'])) {
-                unset($config['dhcpdv6'][$if]['enable']);
-                $changed = true;
-            }
+            //if (isset($config['dhcpdv6'][$if]['enable'])) {
+            //    unset($config['dhcpdv6'][$if]['enable']);
+            //    $changed = true;
+            //}
         }
     }
 
     if ($changed) {
         write_config("CARP: " . ($mode === 'enable' ? 'Enabled' : 'Disabled') . " radvd+DHCPv6 on " . implode(',', array_keys($track_ifaces)), false);
         services_radvd_configure();
-        services_dhcpdv6_configure();
+        //services_dhcpdv6_configure();
     }
 }
 
