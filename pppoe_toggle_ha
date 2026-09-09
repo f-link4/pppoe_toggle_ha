@@ -210,8 +210,12 @@ function manage_dhcpdv6($mode): void
     $changed = false;
     foreach (array_keys($track_ifaces) as $if) {
         if ($mode === 'enable') {
-            if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== 'assist') {
-                $config['dhcpdv6'][$if]['ramode'] = 'assist';
+            //if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== 'assist') {
+            //    $config['dhcpdv6'][$if]['ramode'] = 'assist';
+            //    $changed = true;
+            //}
+            if (($config['dhcpdv6'][$if]['rapriority'] ?? '') !== 'medium') {
+                $config['dhcpdv6'][$if]['rapriority'] = 'medium';
                 $changed = true;
             }
             //if (!isset($config['dhcpdv6'][$if]['enable'])) {
@@ -219,8 +223,12 @@ function manage_dhcpdv6($mode): void
             //    $changed = true;
             //}
         } else {
-            if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== 'disabled') {
-                $config['dhcpdv6'][$if]['ramode'] = 'disabled';
+            //if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== 'disabled') {
+            //    $config['dhcpdv6'][$if]['ramode'] = 'disabled';
+            //    $changed = true;
+            //}
+            if (($config['dhcpdv6'][$if]['rapriority'] ?? '') !== 'low') {
+                $config['dhcpdv6'][$if]['rapriority'] = 'low';
                 $changed = true;
             }
             //if (isset($config['dhcpdv6'][$if]['enable'])) {
