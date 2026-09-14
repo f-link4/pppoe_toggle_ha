@@ -20,7 +20,7 @@ stop_cmd=":"
 
 pppoe_toggle_ha_start()
 {
-    ervice devd reload >/dev/null 2>&1 || true
+    service devd reload >/dev/null 2>&1 || true
     ${command} ${command_args} >/dev/null 2>&1 || true
 }
 
