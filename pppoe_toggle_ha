@@ -210,27 +210,27 @@ function manage_dhcpdv6($mode): void
     $changed = false;
     foreach (array_keys($track_ifaces) as $if) {
         if ($mode === 'enable') {
-            //if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== 'assist') {
-            //    $config['dhcpdv6'][$if]['ramode'] = 'assist';
-            //    $changed = true;
-            //}
-            if (($config['dhcpdv6'][$if]['rapriority'] ?? '') !== 'medium') {
-                $config['dhcpdv6'][$if]['rapriority'] = 'medium';
+            if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== 'assist') {
+                $config['dhcpdv6'][$if]['ramode'] = 'assist';
                 $changed = true;
             }
+            //if (($config['dhcpdv6'][$if]['rapriority'] ?? '') !== 'medium') {
+            //    $config['dhcpdv6'][$if]['rapriority'] = 'medium';
+            //    $changed = true;
+            //}
             //if (!isset($config['dhcpdv6'][$if]['enable'])) {
             //    $config['dhcpdv6'][$if]['enable'] = '';
             //    $changed = true;
             //}
         } else {
-            //if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== 'disabled') {
-            //    $config['dhcpdv6'][$if]['ramode'] = 'disabled';
-            //    $changed = true;
-            //}
-            if (($config['dhcpdv6'][$if]['rapriority'] ?? '') !== 'low') {
-                $config['dhcpdv6'][$if]['rapriority'] = 'low';
+            if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== 'disabled') {
+                $config['dhcpdv6'][$if]['ramode'] = 'disabled';
                 $changed = true;
             }
+            //if (($config['dhcpdv6'][$if]['rapriority'] ?? '') !== 'low') {
+            //    $config['dhcpdv6'][$if]['rapriority'] = 'low';
+            //    $changed = true;
+            //}
             //if (isset($config['dhcpdv6'][$if]['enable'])) {
             //    unset($config['dhcpdv6'][$if]['enable']);
             //    $changed = true;
@@ -295,11 +295,11 @@ function apply_carp_state($state): void
                     interface_dhcpv6_configure($real_iface, $config['interfaces'][$ifkey], true);
                 }
 
-                if (!$is_enabled) {
-                    //$config['interfaces'][$ifkey]['enable'] = '1';
-                    //write_config("enable interface '{$ifkey}' due CARP event '{$state}'", false);
-                    //interface_configure($ifkey);
-                }
+                //if (!$is_enabled) {
+                //    $config['interfaces'][$ifkey]['enable'] = '1';
+                //    write_config("enable interface '{$ifkey}' due CARP event '{$state}'", false);
+                //    interface_configure($ifkey);
+                //}
 
                 if (wait_for_wan_ip6()) {
                     manage_dhcpdv6('enable');
@@ -315,11 +315,11 @@ function apply_carp_state($state): void
 
                 manage_dhcpdv6('disable');
 
-                if ($is_enabled) {
-                    //unset($config['interfaces'][$ifkey]['enable']);
-                    //write_config("disable interface '{$ifkey}' due CARP event '{$state}'", false);
-                    //interface_configure($ifkey);
-                }
+                //if ($is_enabled) {
+                //    unset($config['interfaces'][$ifkey]['enable']);
+                //    write_config("disable interface '{$ifkey}' due CARP event '{$state}'", false);
+                //    interface_configure($ifkey);
+                //}
 
                 mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " down");
 
