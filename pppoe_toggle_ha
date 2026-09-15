@@ -16,6 +16,7 @@ if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help']))
     echo "=======================================================================\n";
     echo "Usage:\n";
     echo "  pppoe_toggle_ha @<VHID> MASTER    - Enable WAN (CARP MASTER)\n";
+    echo "  pppoe_toggle_ha @<VHID> MASTER [conn]  - Enable WAN (wait for connectivity)\n";    
     echo "  pppoe_toggle_ha @<VHID> BACKUP    - Disable WAN (CARP BACKUP)\n";
     echo "  pppoe_toggle_ha RECONCILE         - Check and set state at boot\n";
     echo "  pppoe_toggle_ha RECONNECT         - Force WAN reconnect\n";
@@ -63,6 +64,7 @@ require_once("util.inc");
 
 $subsystem = $argv[1] ?? '';
 $type = strtoupper($argv[2] ?? '');
+$flag = strtolower($argv[3] ?? '');
 
 $vhidX = 1;
 $state_file = "/tmp/pppoe_toggle_ha.state";
@@ -299,7 +301,7 @@ function update_state_file($state, $write = false): bool
 
 function apply_carp_state($state): void
 {
-    global $config, $type, $ifkey, $real_iface, $pppoe_state, $is_enabled;
+    global $config, $type, $flag, $ifkey, $real_iface, $pppoe_state, $is_enabled;
 
     switch ($state) {
 
@@ -326,6 +328,10 @@ function apply_carp_state($state): void
 
                 if (wait_for_wan_ip6()) {
                     manage_dhcpdv6('enable');
+                }
+
+                if ($flag === 'conn') {
+                    wait_for_online(300);
                 }
 
                 mwexec("/usr/local/sbin/pppoe_toggle_ha_master.sh");
