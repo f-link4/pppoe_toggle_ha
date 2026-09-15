@@ -73,9 +73,12 @@ $cooldown_file = '/tmp/pppoe_toggle_ha.cooldown';
 $cooldown_sec = 10;
 $ip_timeout = 30;
 $conn_timeout = 300;
-$ifkey      = 'wan';
+$ifkey = 'wan';
 $real_iface = get_real_interface($ifkey, "inet");
 $track_ifaces = link_interface_to_track6($ifkey);
+$ssh_key = '/root/.ssh/secret.ssh';
+$nodeA = 'gateway1';
+$nodeB = 'gateway2';
 
 function check_cooldown() {
     global $cooldown_file, $cooldown_sec;
@@ -391,33 +394,28 @@ function apply_carp_state($state): void
 
 function apply_handover(): void
 {
-    global $vhidX, $carp_state;
+    global $vhidX, $carp_state, $ssh_key, $nodeA, $nodeB;
 
     if ($carp_state !== 'MASTER') {
         exit(1);
     }
 
-    $my_host = strtolower(php_uname('n'));
+    $self_host = strtolower(php_uname('n'));
     $peer_host = '';
 
-    if (strpos($my_host, 'gateway1') !== false) {
-        $peer_host = 'gateway2';
-    } elseif (strpos($my_host, 'gateway2') !== false) {
-        $peer_host = 'gateway1';
+    if (strpos($self_host, $nodeA) !== false) {
+        $peer_host = $nodeB;
+    } elseif (strpos($self_host, $nodeB) !== false) {
+        $peer_host = $nodeA;
     } else {
-        echo "FAIL: cannot determine peer for host '{$my_host}'\n";
         exit(1);
     }
 
-    $ssh_key = '/root/.ssh/secret.ssh';
-    $remote_cmd = "/usr/local/sbin/pppoe_toggle_ha @{$vhidX} MASTER conn";
-    $ssh = "ssh -i " . escapeshellarg($ssh_key)
-         . " -o StrictHostKeyChecking=no"
-         . " -o ConnectTimeout=10"
-         . " " . escapeshellarg("root@{$peer_host}")
-         . " " . escapeshellarg($remote_cmd);
-
-    exec($ssh . " 2>&1", $out, $ret);
+    exec("ssh -i " . escapeshellarg($ssh_key)
+        . " -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+        . " " . escapeshellarg("root@{$peer_host}")
+        . " " . escapeshellarg("/usr/local/sbin/pppoe_toggle_ha @{$vhidX} MASTER conn")
+        . " 2>&1", $out, $ret);
 
     if ($ret !== 0) {
         exit(1);
