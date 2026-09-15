@@ -171,7 +171,14 @@ function wait_for_online(): bool
         $req6 = shell_exec("/sbin/ping6 -c 2 -t 2 -I " . escapeshellarg($real_iface) . " one.one.one.one 2>&1");
         $rep6 = (strpos($req6, '2 packets received') !== false);
 
-        if ($rep4) {
+        if (!$rep4) {
+            sleep(1);
+            continue;
+        }
+
+        $test_name = 'check-' . time() . '-' . mt_rand(1000, 9999) . '.example.com';
+        $dns = shell_exec("/usr/bin/dig +time=3 +tries=1 A {$test_name} @127.0.0.1 2>&1");
+        if (strpos($dns, 'status: NXDOMAIN') !== false) {
             return true;
         }
 
