@@ -390,7 +390,11 @@ function apply_carp_state($state): void
 
 function apply_handover(): void
 {
-    global $vhidX;
+    global $vhidX, $carp_state;
+
+    if ($carp_state !== 'MASTER') {
+        exit(1);
+    }
 
     $my_host = strtolower(php_uname('n'));
     $peer_host = '';
