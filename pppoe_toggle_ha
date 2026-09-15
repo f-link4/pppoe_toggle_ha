@@ -64,13 +64,14 @@ require_once("util.inc");
 
 $subsystem = $argv[1] ?? '';
 $type = strtoupper($argv[2] ?? '');
-$flag = strtolower($argv[3] ?? '');
+$conn = strtolower($argv[3] ?? '');
 
 $vhidX = 1;
 $state_file = "/tmp/pppoe_toggle_ha.state";
 $cooldown_file = '/tmp/pppoe_toggle_ha.cooldown';
 $cooldown_sec = 10;
 $ip_timeout = 30;
+$conn_timeout = 300;
 $ifkey      = 'wan';
 $real_iface = get_real_interface($ifkey, "inet");
 $track_ifaces = link_interface_to_track6($ifkey);
@@ -147,11 +148,11 @@ function wait_for_wan_ip6(): bool
     return false;
 }
 
-function wait_for_online(int $timeout = 300): bool
+function wait_for_online(): bool
 {
-    global $ifkey, $real_iface;
+    global $ifkey, $real_iface, $conn_timeout;
 
-    $deadline = time() + $timeout;
+    $deadline = time() + $conn_timeout;
     $ip4 = '';
 
     while (time() < $deadline) {
@@ -310,7 +311,7 @@ function update_state_file($state, $write = false): bool
 
 function apply_carp_state($state): void
 {
-    global $config, $type, $flag, $ifkey, $real_iface, $pppoe_state, $is_enabled;
+    global $config, $type, $conn, $ifkey, $real_iface, $pppoe_state, $is_enabled;
 
     switch ($state) {
 
@@ -339,8 +340,8 @@ function apply_carp_state($state): void
                     manage_dhcpdv6('enable');
                 }
 
-                if ($flag === 'conn') {
-                    wait_for_online(300);
+                if ($conn === 'conn') {
+                    wait_for_online();
                 }
 
                 mwexec("/usr/local/sbin/pppoe_toggle_ha_master.sh");
