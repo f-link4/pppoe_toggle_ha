@@ -150,7 +150,7 @@ function wait_for_wan_ip6(): bool
 
 function wait_for_online(): bool
 {
-    global $ifkey, $real_iface, $conn_timeout;
+    global $conn_timeout, $ifkey, $real_iface;
 
     $deadline = time() + $conn_timeout;
     $ip4 = '';
