@@ -319,7 +319,9 @@ function apply_carp_state($state): void
         case 'MASTER':
             if (!$pppoe_state['active']) {
 
-                mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " up");
+                if (mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " up") !== 0) {
+                    exit(1);
+                }
 
                 if (wait_for_wan_ip4()) {
                     interface_dhcpv6_configure($real_iface, $config['interfaces'][$ifkey], true);
