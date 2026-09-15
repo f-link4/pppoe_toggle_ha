@@ -178,7 +178,8 @@ function wait_for_online(): bool
 
         $check_fqdn = 'check-' . time() . '-' . mt_rand(1000, 9999) . '.example.com';
         $dns = shell_exec("/usr/bin/dig +time=3 +tries=1 A {$check_fqdn} @127.0.0.1 2>&1");
-        if (strpos($dns, 'status: NXDOMAIN') !== false) {
+        if (strpos($dns, 'status: SERVFAIL') === false
+            && strpos($dns, 'connection timed out') === false) {
             return true;
         }
 
