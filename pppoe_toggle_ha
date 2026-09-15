@@ -152,19 +152,17 @@ function wait_for_online(int $timeout = 300): bool
     global $ifkey, $real_iface;
 
     $deadline = time() + $timeout;
+    $ip4 = '';
 
     while (time() < $deadline) {
-        $ip4 = get_interface_ip($ifkey);
-        if (!empty($ip4) && $ip4 !== '0.0.0.0') {
-            break;
+        if ($ip4 === '') {
+            $ip4 = get_interface_ip($ifkey);
+            if (empty($ip4) || $ip4 === '0.0.0.0') {
+                sleep(1);
+                continue;
+            }
         }
-        sleep(1);
-    }
-    if (empty($ip4) || $ip4 === '0.0.0.0') {
-        return false;
-    }
 
-    while (time() < $deadline) {
         $req4 = shell_exec("/sbin/ping -c 2 -t 2 -S " . escapeshellarg($ip4) . " one.one.one.one 2>&1");
         $rep4 = (strpos($req4, '2 packets received') !== false);
 
