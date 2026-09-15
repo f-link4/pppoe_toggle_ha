@@ -154,10 +154,10 @@ function wait_for_online(int $timeout = 300): bool
     $deadline = time() + $timeout;
 
     while (time() < $deadline) {
-        $req4 = shell_exec("/sbin/ping -c 2 -t 2 -I " . escapeshellarg($real_iface) . " one.one.one.one 2>&1");
+        $req4 = shell_exec("/sbin/ping -c 2 -t 2 " . escapeshellarg($real_iface) . " one.one.one.one 2>&1");
         $rep4 = (strpos($req4, '2 packets received') !== false);
 
-        $req6 = shell_exec("/sbin/ping6 -c 2 -t 2 -I " . escapeshellarg($real_iface) . " one.one.one.one 2>&1");
+        $req6 = shell_exec("/sbin/ping6 -c 2 -t 2 " . escapeshellarg($real_iface) . " one.one.one.one 2>&1");
         $rep6 = (strpos($req6, '2 packets received') !== false);
 
         if ($rep4) {
