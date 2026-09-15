@@ -408,6 +408,9 @@ function apply_handover(): void
     if ($ret !== 0) {
         exit(1);
     }
+
+    interfaces_carp_set_maintenancemode(true);
+
 }
 
 $carp_state = preg_match('/carp:\s+(MASTER|BACKUP|INIT)\s+vhid\s+' . preg_quote((string)$vhidX, '/') . '/i', shell_exec("/sbin/ifconfig -a 2>/dev/null"), $m) ? strtoupper($m[1]) : '';
