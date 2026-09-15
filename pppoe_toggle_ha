@@ -20,6 +20,7 @@ if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help']))
     echo "  pppoe_toggle_ha @<VHID> BACKUP    - Disable WAN (CARP BACKUP)\n";
     echo "  pppoe_toggle_ha RECONCILE         - Check and set state at boot\n";
     echo "  pppoe_toggle_ha RECONNECT         - Force WAN reconnect\n";
+    echo "  pppoe_toggle_ha HANDOVER          - Switch MASTER to BACKUP gracefully\n";
     echo "  pppoe_toggle_ha set_vhid <number> - Set VHID to react on\n";
     echo "  pppoe_toggle_ha help              - Show this help\n";
     echo "=======================================================================\n";
@@ -378,6 +379,37 @@ function apply_carp_state($state): void
     update_state_file($state, true);
 }
 
+function apply_handover(): void
+{
+    global $vhidX;
+
+    $my_host = strtolower(php_uname('n'));
+    $peer_host = '';
+
+    if (strpos($my_host, 'gateway1') !== false) {
+        $peer_host = 'gateway2';
+    } elseif (strpos($my_host, 'gateway2') !== false) {
+        $peer_host = 'gateway1';
+    } else {
+        echo "FAIL: cannot determine peer for host '{$my_host}'\n";
+        exit(1);
+    }
+
+    $ssh_key = '/root/.ssh/area47.ssh';
+    $remote_cmd = "/usr/local/sbin/pppoe_toggle_ha @{$vhidX} MASTER conn";
+    $ssh = "ssh -i " . escapeshellarg($ssh_key)
+         . " -o StrictHostKeyChecking=no"
+         . " -o ConnectTimeout=10"
+         . " " . escapeshellarg("root@{$peer_host}")
+         . " " . escapeshellarg($remote_cmd);
+
+    exec($ssh . " 2>&1", $out, $ret);
+
+    if ($ret !== 0) {
+        exit(1);
+    }
+}
+
 $carp_state = preg_match('/carp:\s+(MASTER|BACKUP|INIT)\s+vhid\s+' . preg_quote((string)$vhidX, '/') . '/i', shell_exec("/sbin/ifconfig -a 2>/dev/null"), $m) ? strtoupper($m[1]) : '';
 $pppoe_state = pppoe_state($ifkey);
 $is_enabled = isset($config['interfaces'][$ifkey]['enable']);
@@ -391,6 +423,11 @@ if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONNECT') {
     if ($pppoe_state['active']) {
         interface_configure($ifkey);
     }
+    exit(0);
+}
+
+if (isset($argv[1]) && strtoupper($argv[1]) === 'HANDOVER') {
+    apply_handover();
     exit(0);
 }
 
