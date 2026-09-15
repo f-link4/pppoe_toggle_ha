@@ -395,7 +395,7 @@ function apply_handover(): void
         exit(1);
     }
 
-    $ssh_key = '/root/.ssh/area47.ssh';
+    $ssh_key = '/root/.ssh/secret.ssh';
     $remote_cmd = "/usr/local/sbin/pppoe_toggle_ha @{$vhidX} MASTER conn";
     $ssh = "ssh -i " . escapeshellarg($ssh_key)
          . " -o StrictHostKeyChecking=no"
