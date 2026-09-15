@@ -125,7 +125,7 @@ function wait_for_wan_ip4(): bool
         if (!empty($ip4) && $ip4 !== "0.0.0.0") {
             return true;
         }
-        usleep(200000); // 200 ms
+        usleep(200000);
     }
 
     return false;
@@ -141,7 +141,7 @@ function wait_for_wan_ip6(): bool
         if (!empty($ip6) && strpos($ip6, 'fe80:') !== 0) {
             return true;
         }
-        usleep(200000); // 200 ms
+        usleep(200000);
     }
 
     return false;
