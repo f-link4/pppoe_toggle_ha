@@ -156,6 +156,11 @@ function wait_for_online(): bool
 {
     global $conn_timeout, $ifkey, $real_iface;
 
+    $dns_ip = get_interface_ip('lan');
+    if (empty($dns_ip) || $dns_ip === '0.0.0.0') {
+        $dns_ip = '127.0.0.1';
+    }
+
     $deadline = time() + $conn_timeout;
     $ip4 = '';
 
@@ -180,7 +185,7 @@ function wait_for_online(): bool
         }
 
         $check_fqdn = 'check-' . time() . '-' . mt_rand(1000, 9999) . '.example.com';
-        $dns = shell_exec("/usr/bin/dig +time=3 +tries=1 A {$check_fqdn} @127.0.0.1 2>&1");
+        $dns = shell_exec("/usr/bin/dig +time=3 +tries=1 A {$check_fqdn} @" . escapeshellarg($dns_ip) . " 2>&1");
         if (strpos($dns, 'status: SERVFAIL') === false
             && strpos($dns, 'connection timed out') === false) {
             return true;
