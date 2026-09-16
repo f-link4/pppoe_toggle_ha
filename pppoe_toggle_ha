@@ -156,12 +156,11 @@ function wait_for_conn(): bool
     }
 
     while (time() < $deadline) {
-        $check_fqdn = 'check-' . mt_rand(1000000, 9999999) . '.tld';
+        $check_fqdn = 'check-' . mt_rand(1000000, 9999999) . '.cloudflare.com';
         $out = shell_exec("/usr/bin/dig +time=3 +tries=1 {$check_fqdn} @" . escapeshellarg($dns_ip) . " 2>&1");
-        if ($out !== null && strpos($out, 'status: NXDOMAIN') !== false) {
+        if ($out !== null && strpos($out, 'status: NOERROR') !== false) {
             return true;
         }
-
         sleep(1);
     }
 
