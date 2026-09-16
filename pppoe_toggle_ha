@@ -157,13 +157,13 @@ function wait_for_online(): bool
 {
     global $conn_timeout, $ifkey, $real_iface;
 
+    $deadline = time() + $conn_timeout;
+    $ip4 = '';
+
     $dns_ip = get_interface_ip('lan');
     if (empty($dns_ip) || $dns_ip === '0.0.0.0') {
         $dns_ip = '127.0.0.1';
     }
-
-    $deadline = time() + $conn_timeout;
-    $ip4 = '';
 
     while (time() < $deadline) {
         if ($ip4 === '') {
