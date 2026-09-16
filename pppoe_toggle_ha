@@ -368,7 +368,9 @@ function apply_carp_state($state): void
                 }
 
                 if ($conn === 'conn') {
-                    wait_for_conn();
+                    if (!wait_for_conn()) {
+                        exit(1);
+                    }
                 }
 
                 mwexec("/usr/local/sbin/pppoe_toggle_ha_master.sh");
