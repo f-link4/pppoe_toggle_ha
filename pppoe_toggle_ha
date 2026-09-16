@@ -21,6 +21,7 @@ if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help']))
     echo "  pppoe_toggle_ha RECONCILE              - Check and set state (at boot)\n";
     echo "  pppoe_toggle_ha RECONNECT              - Force WAN reconnect\n";
     echo "  pppoe_toggle_ha HANDOVER               - Graceful Handover MASTER to BACKUP\n";
+    echo "  pppoe_toggle_ha TAKEOVER               - Graceful Takeover BACKUP to MASTER\n";
     echo "  pppoe_toggle_ha set_vhid <number>      - Set VHID to react on\n";
     echo "  pppoe_toggle_ha help                   - Show this help\n";
     echo "=============================================================================\n";
@@ -34,7 +35,7 @@ if (isset($argv[1]) && strtolower($argv[1]) === 'set_vhid') {
     }
     $new_vhid = (int)$argv[2];
     $script = file_get_contents(__FILE__);
-    $pattern = '/^(\$vhidX\s*=\s*)\d+\s*;/m';
+    $pattern = '/^(\$vhid\s*=\s*)\d+\s*;/m';
     if (preg_match($pattern, $script, $matches)) {
         $new_line = $matches[1] . $new_vhid . ';';
         $script = preg_replace($pattern, $new_line, $script);
@@ -67,10 +68,10 @@ $subsystem = $argv[1] ?? '';
 $type = strtoupper($argv[2] ?? '');
 $conn = strtolower($argv[3] ?? '');
 
-$vhidX = 1;
+$vhid = 1;
 $state_file = "/tmp/pppoe_toggle_ha.state";
 $cooldown_file = '/tmp/pppoe_toggle_ha.cooldown';
-$cooldown_sec = 10;
+$cooldown_time = 10;
 $ip_timeout = 30;
 $conn_timeout = 300;
 $ifkey = 'wan';
@@ -81,7 +82,7 @@ $nodeA = 'gateway1';
 $nodeB = 'gateway2';
 
 function check_cooldown() {
-    global $cooldown_file, $cooldown_sec;
+    global $cooldown_file, $cooldown_time;
     $fp = fopen($cooldown_file, 'c+');
     if ($fp === false) {
         return true;
@@ -90,7 +91,7 @@ function check_cooldown() {
     if (flock($fp, LOCK_EX)) {
         rewind($fp);
         $last = (int)trim(stream_get_contents($fp));
-        if (time() - $last >= $cooldown_sec) {
+        if (time() - $last >= $cooldown_time) {
             ftruncate($fp, 0);
             rewind($fp);
             fwrite($fp, (string)time());
@@ -159,6 +160,11 @@ function wait_for_online(): bool
     $deadline = time() + $conn_timeout;
     $ip4 = '';
 
+    $dns_ip = get_interface_ip('lan');
+    if (empty($dns_ip) || $dns_ip === '0.0.0.0') {
+        $dns_ip = '127.0.0.1';
+    }
+
     while (time() < $deadline) {
         if ($ip4 === '') {
             $ip4 = get_interface_ip($ifkey);
@@ -180,7 +186,7 @@ function wait_for_online(): bool
         }
 
         $check_fqdn = 'check-' . time() . '-' . mt_rand(1000, 9999) . '.example.com';
-        $dns = shell_exec("/usr/bin/dig +time=3 +tries=1 A {$check_fqdn} @127.0.0.1 2>&1");
+        $dns = shell_exec("/usr/bin/dig +time=3 +tries=1 A {$check_fqdn} @" . escapeshellarg($dns_ip) . " 2>&1");
         if (strpos($dns, 'status: SERVFAIL') === false
             && strpos($dns, 'connection timed out') === false) {
             return true;
@@ -261,42 +267,48 @@ function manage_dhcpdv6($mode): void
                 $config['dhcpdv6'][$if]['ramode'] = 'assist';
                 $changed = true;
             }
-            //if (($config['dhcpdv6'][$if]['rapriority'] ?? '') !== 'medium') {
-            //    $config['dhcpdv6'][$if]['rapriority'] = 'medium';
-            //    $changed = true;
-            //}
-            //if (!isset($config['dhcpdv6'][$if]['enable'])) {
-            //    $config['dhcpdv6'][$if]['enable'] = '';
-            //    $changed = true;
-            //}
+/*
+            if (($config['dhcpdv6'][$if]['rapriority'] ?? '') !== 'medium') {
+                $config['dhcpdv6'][$if]['rapriority'] = 'medium';
+                $changed = true;
+            }
+            if (!isset($config['dhcpdv6'][$if]['enable'])) {
+                $config['dhcpdv6'][$if]['enable'] = '';
+                $changed = true;
+            }
+*/
         } else {
             if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== 'disabled') {
                 $config['dhcpdv6'][$if]['ramode'] = 'disabled';
                 $changed = true;
             }
-            //if (($config['dhcpdv6'][$if]['rapriority'] ?? '') !== 'low') {
-            //    $config['dhcpdv6'][$if]['rapriority'] = 'low';
-            //    $changed = true;
-            //}
-            //if (isset($config['dhcpdv6'][$if]['enable'])) {
-            //    unset($config['dhcpdv6'][$if]['enable']);
-            //    $changed = true;
-            //}
+/*
+            if (($config['dhcpdv6'][$if]['rapriority'] ?? '') !== 'low') {
+                $config['dhcpdv6'][$if]['rapriority'] = 'low';
+                $changed = true;
+            }
+            if (isset($config['dhcpdv6'][$if]['enable'])) {
+                unset($config['dhcpdv6'][$if]['enable']);
+                $changed = true;
+            }
+*/
         }
     }
 
     if ($changed) {
         write_config("CARP: " . ($mode === 'enable' ? 'Enabled' : 'Disabled') . " radvd+DHCPv6 on " . implode(',', array_keys($track_ifaces)), false);
         services_radvd_configure();
-        //services_dhcpdv6_configure();
+/*
+        services_dhcpdv6_configure();
+*/
     }
 }
 
 function update_state_file($state, $write = false): bool
 {
-    global $vhidX, $state_file;
+    global $vhid, $state_file;
 
-    $new_state = "@{$vhidX}|{$state}";
+    $new_state = "@{$vhid}|{$state}";
     $fp = fopen($state_file, 'c+');
     if ($fp === false) {
         return true;
@@ -343,13 +355,13 @@ function apply_carp_state($state): void
                 if (!wait_for_wan_ip6()) {
                     interface_dhcpv6_configure($real_iface, $config['interfaces'][$ifkey], true);
                 }
-
-                //if (!$is_enabled) {
-                //    $config['interfaces'][$ifkey]['enable'] = '1';
-                //    write_config("enable interface '{$ifkey}' due CARP event '{$state}'", false);
-                //    interface_configure($ifkey);
-                //}
-
+/*
+                if (!$is_enabled) {
+                    $config['interfaces'][$ifkey]['enable'] = '1';
+                    write_config("enable interface '{$ifkey}' due CARP event '{$state}'", false);
+                    interface_configure($ifkey);
+                }
+*/
                 if (wait_for_wan_ip6()) {
                     manage_dhcpdv6('enable');
                 }
@@ -367,13 +379,13 @@ function apply_carp_state($state): void
             if ($pppoe_state['active']) {
 
                 manage_dhcpdv6('disable');
-
-                //if ($is_enabled) {
-                //    unset($config['interfaces'][$ifkey]['enable']);
-                //    write_config("disable interface '{$ifkey}' due CARP event '{$state}'", false);
-                //    interface_configure($ifkey);
-                //}
-
+/*
+                if ($is_enabled) {
+                    unset($config['interfaces'][$ifkey]['enable']);
+                    write_config("disable interface '{$ifkey}' due CARP event '{$state}'", false);
+                    interface_configure($ifkey);
+                }
+*/
                 mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " down");
 
                 kill_states_on_interface($real_iface);
@@ -394,7 +406,7 @@ function apply_carp_state($state): void
 
 function apply_handover(): void
 {
-    global $vhidX, $carp_state, $ssh_key, $nodeA, $nodeB;
+    global $vhid, $carp_state, $ssh_key, $nodeA, $nodeB;
 
     if ($carp_state !== 'MASTER') {
         exit(1);
@@ -414,7 +426,7 @@ function apply_handover(): void
     exec("ssh -i " . escapeshellarg($ssh_key)
         . " -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
         . " " . escapeshellarg("root@{$peer_host}")
-        . " " . escapeshellarg("/usr/local/sbin/pppoe_toggle_ha @{$vhidX} MASTER conn")
+        . " " . escapeshellarg("/usr/local/sbin/pppoe_toggle_ha @{$vhid} MASTER conn && /usr/local/sbin/pfSsh.php playback disablecarpmaint")
         . " 2>&1", $out, $ret);
 
     if ($ret !== 0) {
@@ -425,7 +437,42 @@ function apply_handover(): void
 
 }
 
-$carp_state = preg_match('/carp:\s+(MASTER|BACKUP|INIT)\s+vhid\s+' . preg_quote((string)$vhidX, '/') . '/i', shell_exec("/sbin/ifconfig -a 2>/dev/null"), $m) ? strtoupper($m[1]) : '';
+function apply_takeover(): void
+{
+    global $vhid, $carp_state, $ssh_key, $nodeA, $nodeB, $conn;
+
+    if ($carp_state !== 'BACKUP') {
+        exit(1);
+    }
+
+    $conn = 'conn';
+    apply_carp_state('MASTER');
+
+    interfaces_carp_set_maintenancemode(false);
+
+    $self_host = strtolower(php_uname('n'));
+    $peer_host = '';
+
+    if (strpos($self_host, $nodeA) !== false) {
+        $peer_host = $nodeB;
+    } elseif (strpos($self_host, $nodeB) !== false) {
+        $peer_host = $nodeA;
+    } else {
+        exit(1);
+    }
+
+    exec("ssh -i " . escapeshellarg($ssh_key)
+        . " -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+        . " " . escapeshellarg("root@{$peer_host}")
+        . " " . escapeshellarg("/usr/local/sbin/pfSsh.php playback enablecarpmaint")
+        . " 2>&1", $out, $ret);
+
+    if ($ret !== 0) {
+        exit(1);
+    }
+}
+
+$carp_state = preg_match('/carp:\s+(MASTER|BACKUP|INIT)\s+vhid\s+' . preg_quote((string)$vhid, '/') . '/i', shell_exec("/sbin/ifconfig -a 2>/dev/null"), $m) ? strtoupper($m[1]) : '';
 $pppoe_state = pppoe_state($ifkey);
 $is_enabled = isset($config['interfaces'][$ifkey]['enable']);
 
@@ -446,8 +493,13 @@ if (isset($argv[1]) && strtoupper($argv[1]) === 'HANDOVER') {
     exit(0);
 }
 
+if (isset($argv[1]) && strtoupper($argv[1]) === 'TAKEOVER') {
+    apply_takeover();
+    exit(0);
+}
+
 if (preg_match('/@(\d+)$/', $subsystem, $matches) || preg_match('/^(\d+)@/', $subsystem, $matches)) {
-    $vhid = (int)$matches[1];
+    $vhidX = (int)$matches[1];
 } else {
     exit(1);
 }
@@ -456,7 +508,7 @@ if (!in_array($type, ['MASTER', 'BACKUP', 'INIT'])) {
     exit(1);
 }
 
-if ($vhid !== $vhidX) {
+if ($vhidX !== $vhid) {
     exit(0);
 }
 
