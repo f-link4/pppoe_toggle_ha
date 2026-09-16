@@ -35,7 +35,7 @@ if (isset($argv[1]) && strtolower($argv[1]) === 'set_vhid') {
     }
     $new_vhid = (int)$argv[2];
     $script = file_get_contents(__FILE__);
-    $pattern = '/^(\$vhidX\s*=\s*)\d+\s*;/m';
+    $pattern = '/^(\$vhid\s*=\s*)\d+\s*;/m';
     if (preg_match($pattern, $script, $matches)) {
         $new_line = $matches[1] . $new_vhid . ';';
         $script = preg_replace($pattern, $new_line, $script);
@@ -68,7 +68,7 @@ $subsystem = $argv[1] ?? '';
 $type = strtoupper($argv[2] ?? '');
 $conn = strtolower($argv[3] ?? '');
 
-$vhidX = 1;
+$vhid = 1;
 $state_file = "/tmp/pppoe_toggle_ha.state";
 $cooldown_file = '/tmp/pppoe_toggle_ha.cooldown';
 $cooldown_sec = 10;
@@ -298,15 +298,17 @@ function manage_dhcpdv6($mode): void
     if ($changed) {
         write_config("CARP: " . ($mode === 'enable' ? 'Enabled' : 'Disabled') . " radvd+DHCPv6 on " . implode(',', array_keys($track_ifaces)), false);
         services_radvd_configure();
-        //services_dhcpdv6_configure();
+/*
+        services_dhcpdv6_configure();
+*/
     }
 }
 
 function update_state_file($state, $write = false): bool
 {
-    global $vhidX, $state_file;
+    global $vhid, $state_file;
 
-    $new_state = "@{$vhidX}|{$state}";
+    $new_state = "@{$vhid}|{$state}";
     $fp = fopen($state_file, 'c+');
     if ($fp === false) {
         return true;
@@ -404,7 +406,7 @@ function apply_carp_state($state): void
 
 function apply_handover(): void
 {
-    global $vhidX, $carp_state, $ssh_key, $nodeA, $nodeB;
+    global $vhid, $carp_state, $ssh_key, $nodeA, $nodeB;
 
     if ($carp_state !== 'MASTER') {
         exit(1);
@@ -424,7 +426,7 @@ function apply_handover(): void
     exec("ssh -i " . escapeshellarg($ssh_key)
         . " -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
         . " " . escapeshellarg("root@{$peer_host}")
-        . " " . escapeshellarg("/usr/local/sbin/pppoe_toggle_ha @{$vhidX} MASTER conn")
+        . " " . escapeshellarg("/usr/local/sbin/pppoe_toggle_ha @{$vhid} MASTER conn")
         . " 2>&1", $out, $ret);
 
     if ($ret !== 0) {
@@ -437,7 +439,7 @@ function apply_handover(): void
 
 function apply_takeover(): void
 {
-    global $vhidX, $carp_state, $ssh_key, $nodeA, $nodeB, $conn;
+    global $vhid, $carp_state, $ssh_key, $nodeA, $nodeB, $conn;
 
     if ($carp_state !== 'BACKUP') {
         exit(1);
@@ -470,7 +472,7 @@ function apply_takeover(): void
     }
 }
 
-$carp_state = preg_match('/carp:\s+(MASTER|BACKUP|INIT)\s+vhid\s+' . preg_quote((string)$vhidX, '/') . '/i', shell_exec("/sbin/ifconfig -a 2>/dev/null"), $m) ? strtoupper($m[1]) : '';
+$carp_state = preg_match('/carp:\s+(MASTER|BACKUP|INIT)\s+vhid\s+' . preg_quote((string)$vhid, '/') . '/i', shell_exec("/sbin/ifconfig -a 2>/dev/null"), $m) ? strtoupper($m[1]) : '';
 $pppoe_state = pppoe_state($ifkey);
 $is_enabled = isset($config['interfaces'][$ifkey]['enable']);
 
@@ -497,7 +499,7 @@ if (isset($argv[1]) && strtoupper($argv[1]) === 'TAKEOVER') {
 }
 
 if (preg_match('/@(\d+)$/', $subsystem, $matches) || preg_match('/^(\d+)@/', $subsystem, $matches)) {
-    $vhid = (int)$matches[1];
+    $vhidX = (int)$matches[1];
 } else {
     exit(1);
 }
@@ -506,7 +508,7 @@ if (!in_array($type, ['MASTER', 'BACKUP', 'INIT'])) {
     exit(1);
 }
 
-if ($vhid !== $vhidX) {
+if ($vhidX !== $vhid) {
     exit(0);
 }
 
