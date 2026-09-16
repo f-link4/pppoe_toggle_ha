@@ -71,7 +71,7 @@ $conn = strtolower($argv[3] ?? '');
 $vhid = 1;
 $state_file = "/tmp/pppoe_toggle_ha.state";
 $cooldown_file = '/tmp/pppoe_toggle_ha.cooldown';
-$cooldown_sec = 10;
+$cooldown_time = 10;
 $ip_timeout = 30;
 $conn_timeout = 300;
 $ifkey = 'wan';
@@ -82,7 +82,7 @@ $nodeA = 'gateway1';
 $nodeB = 'gateway2';
 
 function check_cooldown() {
-    global $cooldown_file, $cooldown_sec;
+    global $cooldown_file, $cooldown_time;
     $fp = fopen($cooldown_file, 'c+');
     if ($fp === false) {
         return true;
@@ -91,7 +91,7 @@ function check_cooldown() {
     if (flock($fp, LOCK_EX)) {
         rewind($fp);
         $last = (int)trim(stream_get_contents($fp));
-        if (time() - $last >= $cooldown_sec) {
+        if (time() - $last >= $cooldown_time) {
             ftruncate($fp, 0);
             rewind($fp);
             fwrite($fp, (string)time());
