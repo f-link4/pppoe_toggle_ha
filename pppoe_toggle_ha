@@ -153,7 +153,7 @@ function wait_for_wan_ip6(): bool
     return false;
 }
 
-function wait_for_online(): bool
+function wait_for_conn(): bool
 {
     global $conn_timeout, $ifkey, $real_iface;
 
@@ -175,10 +175,10 @@ function wait_for_online(): bool
         }
 
         $req4 = shell_exec("/sbin/ping -c 2 -t 2 -S " . escapeshellarg($ip4) . " one.one.one.one 2>&1");
-        $rep4 = (strpos($req4, '2 packets received') !== false);
+        $rep4 = ($req4 !== null) && (strpos($req4, '2 packets received') !== false);
 
         $req6 = shell_exec("/sbin/ping6 -c 2 -t 2 -I " . escapeshellarg($real_iface) . " one.one.one.one 2>&1");
-        $rep6 = (strpos($req6, '2 packets received') !== false);
+        $rep6 = ($req6 !== null) && (strpos($req6, '2 packets received') !== false);
 
         if (!$rep4) {
             sleep(1);
@@ -187,7 +187,8 @@ function wait_for_online(): bool
 
         $check_fqdn = 'check-' . time() . '-' . mt_rand(1000, 9999) . '.example.com';
         $dns = shell_exec("/usr/bin/dig +time=3 +tries=1 A {$check_fqdn} @" . escapeshellarg($dns_ip) . " 2>&1");
-        if (strpos($dns, 'status: SERVFAIL') === false
+        if ($dns !== null
+            && strpos($dns, 'status: SERVFAIL') === false
             && strpos($dns, 'connection timed out') === false) {
             return true;
         }
@@ -232,7 +233,7 @@ function flush_wan_ipv6(): void
     }
 
     $out = shell_exec("/sbin/ifconfig " . escapeshellarg($real_iface) . " inet6 2>/dev/null");
-    if (empty($out)) {
+    if ($out === null || $out === '') {
         return;
     }
 
@@ -367,7 +368,7 @@ function apply_carp_state($state): void
                 }
 
                 if ($conn === 'conn') {
-                    wait_for_online();
+                    wait_for_conn();
                 }
 
                 mwexec("/usr/local/sbin/pppoe_toggle_ha_master.sh");
@@ -472,7 +473,7 @@ function apply_takeover(): void
     }
 }
 
-$carp_state = preg_match('/carp:\s+(MASTER|BACKUP|INIT)\s+vhid\s+' . preg_quote((string)$vhid, '/') . '/i', shell_exec("/sbin/ifconfig -a 2>/dev/null"), $m) ? strtoupper($m[1]) : '';
+$carp_state = preg_match('/carp:\s+(MASTER|BACKUP|INIT)\s+vhid\s+' . preg_quote((string)$vhid, '/') . '/i', shell_exec("/sbin/ifconfig -a 2>/dev/null") ?? '', $m) ? strtoupper($m[1]) : '';
 $pppoe_state = pppoe_state($ifkey);
 $is_enabled = isset($config['interfaces'][$ifkey]['enable']);
 
