@@ -22,6 +22,7 @@ if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help']))
     echo "  pppoe_toggle_ha RECONNECT              - Force WAN reconnect\n";
     echo "  pppoe_toggle_ha HANDOVER               - Graceful Handover MASTER to BACKUP\n";
     echo "  pppoe_toggle_ha TAKEOVER               - Graceful Takeover BACKUP to MASTER\n";
+    echo "  pppoe_toggle_ha RELEASE                - Exit CARP maintenance on both nodes\n";
     echo "  pppoe_toggle_ha set_vhid <number>      - Set VHID to react on\n";
     echo "  pppoe_toggle_ha help                   - Show this help\n";
     echo "=============================================================================\n";
@@ -379,32 +380,41 @@ function apply_carp_state($state): void
     update_state_file($state, true);
 }
 
+function peer_cmd(string $cmd): bool
+{
+    global $ssh_key, $nodeA, $nodeB;
+
+    $self = strtolower(php_uname('n'));
+    $peer = '';
+
+    if (strpos($self, $nodeA) !== false) {
+        $peer = $nodeB;
+    } elseif (strpos($self, $nodeB) !== false) {
+        $peer = $nodeA;
+    }
+
+    if ($peer === '') {
+        return false;
+    }
+
+    exec("ssh -i " . escapeshellarg($ssh_key)
+        . " -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+        . " " . escapeshellarg("root@{$peer}")
+        . " " . escapeshellarg($cmd)
+        . " 2>&1", $out, $ret);
+
+    return $ret === 0;
+}
+
 function apply_handover(): void
 {
-    global $vhid, $carp_state, $ssh_key, $nodeA, $nodeB;
+    global $vhid, $carp_state;
 
     if ($carp_state !== 'MASTER') {
         exit(1);
     }
 
-    $self_host = strtolower(php_uname('n'));
-    $peer_host = '';
-
-    if (strpos($self_host, $nodeA) !== false) {
-        $peer_host = $nodeB;
-    } elseif (strpos($self_host, $nodeB) !== false) {
-        $peer_host = $nodeA;
-    } else {
-        exit(1);
-    }
-
-    exec("ssh -i " . escapeshellarg($ssh_key)
-        . " -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
-        . " " . escapeshellarg("root@{$peer_host}")
-        . " " . escapeshellarg("/usr/local/sbin/pppoe_toggle_ha @{$vhid} MASTER conn && /usr/local/sbin/pfSsh.php playback disablecarpmaint")
-        . " 2>&1", $out, $ret);
-
-    if ($ret !== 0) {
+    if (!peer_cmd("/usr/local/sbin/pppoe_toggle_ha @" . (int)$vhid . " MASTER conn && /usr/local/sbin/pfSsh.php playback disablecarpmaint")) {
         exit(1);
     }
 
@@ -414,7 +424,7 @@ function apply_handover(): void
 
 function apply_takeover(): void
 {
-    global $vhid, $carp_state, $ssh_key, $nodeA, $nodeB, $conn;
+    global $carp_state, $conn;
 
     if ($carp_state !== 'BACKUP') {
         exit(1);
@@ -425,24 +435,7 @@ function apply_takeover(): void
 
     interfaces_carp_set_maintenancemode(false);
 
-    $self_host = strtolower(php_uname('n'));
-    $peer_host = '';
-
-    if (strpos($self_host, $nodeA) !== false) {
-        $peer_host = $nodeB;
-    } elseif (strpos($self_host, $nodeB) !== false) {
-        $peer_host = $nodeA;
-    } else {
-        exit(1);
-    }
-
-    exec("ssh -i " . escapeshellarg($ssh_key)
-        . " -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
-        . " " . escapeshellarg("root@{$peer_host}")
-        . " " . escapeshellarg("/usr/local/sbin/pfSsh.php playback enablecarpmaint")
-        . " 2>&1", $out, $ret);
-
-    if ($ret !== 0) {
+    if (!peer_cmd("/usr/local/sbin/pfSsh.php playback enablecarpmaint")) {
         exit(1);
     }
 }
@@ -470,6 +463,12 @@ if (isset($argv[1]) && strtoupper($argv[1]) === 'HANDOVER') {
 
 if (isset($argv[1]) && strtoupper($argv[1]) === 'TAKEOVER') {
     apply_takeover();
+    exit(0);
+}
+
+if (isset($argv[1]) && strtoupper($argv[1]) === 'RELEASE') {
+    interfaces_carp_set_maintenancemode(false);
+    peer_cmd("/usr/local/sbin/pfSsh.php playback disablecarpmaint");
     exit(0);
 }
 
