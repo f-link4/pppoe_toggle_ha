@@ -7,10 +7,12 @@ PPPoE Toggle HA — WAN interface management for CARP failover events on pfSense
 - Automatically enables/disables WAN on CARP MASTER/BACKUP events
 - IPv4 and IPv6 support
 - DHCPv6 + radvd management on track interfaces
-- RECONCILE — state check at boot
+- RECONCILE — syncs WAN with CARP state (automatically at boot)
 - RECONNECT — force WAN reconnect (add to cron: `/usr/local/sbin/pppoe_toggle_ha reconnect`)
+- HANDOVER — graceful handover MASTER to BACKUP (pre-start WAN, then switch CARP)
+- TAKEOVER — graceful handover BACKUP to MASTER (pre-start WAN, then switch CARP)
 - flock protection against parallel runs
-- Works with new if_pppoe driver on pfSense 2.9.0
+- Works with new `if_pppoe` driver on pfSense 2.9.0
 
 ## Install
 
