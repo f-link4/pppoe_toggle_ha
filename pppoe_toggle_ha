@@ -446,6 +446,8 @@ function apply_takeover(): void
     $conn = 'conn';
     apply_carp_state('MASTER');
 
+    interfaces_carp_set_maintenancemode(false);
+
     $self_host = strtolower(php_uname('n'));
     $peer_host = '';
 
@@ -466,9 +468,6 @@ function apply_takeover(): void
     if ($ret !== 0) {
         exit(1);
     }
-
-    interfaces_carp_set_maintenancemode(false);
-
 }
 
 $carp_state = preg_match('/carp:\s+(MASTER|BACKUP|INIT)\s+vhid\s+' . preg_quote((string)$vhidX, '/') . '/i', shell_exec("/sbin/ifconfig -a 2>/dev/null"), $m) ? strtoupper($m[1]) : '';
