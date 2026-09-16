@@ -155,11 +155,15 @@ function wait_for_conn(): bool
         $dns_ip = '127.0.0.1';
     }
 
+    $domains = ['cloudflare.com', 'github.com'];
+
     while (time() < $deadline) {
-        $check_fqdn = 'check-' . mt_rand(1000000, 9999999) . '.cloudflare.com';
-        $out = shell_exec("/usr/bin/dig +time=3 +tries=1 {$check_fqdn} @" . escapeshellarg($dns_ip) . " 2>&1");
-        if ($out !== null && strpos($out, 'status: NOERROR') !== false) {
-            return true;
+        foreach ($domains as $domain) {
+            $check_fqdn = 'check-' . mt_rand(1000000, 9999999) . '.' . $domain;
+            $out = shell_exec("/usr/bin/dig +time=3 +tries=1 {$check_fqdn} @" . escapeshellarg($dns_ip) . " 2>&1");
+            if ($out !== null && strpos($out, 'status: NOERROR') !== false) {
+                return true;
+            }
         }
         sleep(1);
     }
