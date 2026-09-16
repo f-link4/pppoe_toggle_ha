@@ -426,7 +426,7 @@ function apply_handover(): void
     exec("ssh -i " . escapeshellarg($ssh_key)
         . " -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
         . " " . escapeshellarg("root@{$peer_host}")
-        . " " . escapeshellarg("/usr/local/sbin/pppoe_toggle_ha @{$vhid} MASTER conn")
+        . " " . escapeshellarg("/usr/local/sbin/pppoe_toggle_ha @{$vhid} MASTER conn && /usr/local/sbin/pfSsh.php playback disablecarpmaint")
         . " 2>&1", $out, $ret);
 
     if ($ret !== 0) {
