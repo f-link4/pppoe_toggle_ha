@@ -160,7 +160,7 @@ function wait_for_conn(): bool
     while (time() < $deadline) {
         foreach ($domains as $domain) {
             $check_fqdn = 'check-' . mt_rand(1000000, 9999999) . '.' . $domain;
-            $out = shell_exec("/usr/bin/dig +time=3 +tries=1 {$check_fqdn} @" . escapeshellarg($dns_ip) . " 2>&1");
+            $out = shell_exec("/usr/local/bin/dig +time=3 +tries=1 {$check_fqdn} @" . escapeshellarg($dns_ip) . " 2>&1");
             if ($out !== null && strpos($out, 'status: NOERROR') !== false) {
                 return true;
             }
