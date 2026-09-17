@@ -10,6 +10,60 @@
  * @link https://github.com/f-link4/pppoe_toggle_ha
  */
 
+$config_file = '/usr/local/etc/pppoe_toggle_ha.conf';
+
+$default_config = [
+    'vhid'          => 1,
+    'ifkey'         => 'wan',
+    'nodeA'         => 'gateway1',
+    'nodeB'         => 'gateway2',
+    'ssh_key'       => '/root/.ssh/secret.ssh',
+    'cooldown_time' => 10,
+    'ip_timeout'    => 30,
+    'conn_timeout'  => 300,
+    'state_file'    => '/tmp/pppoe_toggle_ha.state',
+    'cooldown_file' => '/tmp/pppoe_toggle_ha.cooldown',
+];
+
+function load_config(string $file, array $defaults): array
+{
+    if (!file_exists($file)) {
+        return $defaults;
+    }
+    $user = parse_ini_file($file);
+    if ($user === false) {
+        return $defaults;
+    }
+    return array_merge($defaults, $user);
+}
+
+function save_config(string $file, array $config): bool
+{
+    $lines = [
+        '; pppoe_toggle_ha configuration',
+        '',
+    ];
+    foreach ($config as $k => $v) {
+        $lines[] = "{$k} = {$v}";
+    }
+    $content = implode("\n", $lines) . "\n";
+
+    $bak = $file . '.bak.' . date('YmdHis');
+    if (file_exists($file)) {
+        @copy($file, $bak);
+    }
+
+    $tmp = $file . '.tmp.' . getmypid();
+    if (file_put_contents($tmp, $content) === false) {
+        return false;
+    }
+    if (!@rename($tmp, $file)) {
+        @unlink($tmp);
+        return false;
+    }
+    return true;
+}
+
 if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help'])) {
     echo "=============================================================================\n";
     echo "  PPPoE Toggle HA — WAN interface management for CARP failover events\n";
@@ -24,6 +78,7 @@ if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help']))
     echo "  pppoe_toggle_ha TAKEOVER               - Graceful Takeover BACKUP to MASTER\n";
     echo "  pppoe_toggle_ha RELEASE                - Exit CARP maintenance on both nodes\n";
     echo "  pppoe_toggle_ha set_vhid <number>      - Set VHID to react on\n";
+    echo "  pppoe_toggle_ha show_config            - Show current configuration\n";
     echo "  pppoe_toggle_ha help                   - Show this help\n";
     echo "=============================================================================\n";
     exit(0);
@@ -35,30 +90,29 @@ if (isset($argv[1]) && strtolower($argv[1]) === 'set_vhid') {
         exit(1);
     }
     $new_vhid = (int)$argv[2];
-    $script = file_get_contents(__FILE__);
-    $pattern = '/^(\$vhid\s*=\s*)\d+\s*;/m';
-    if (preg_match($pattern, $script, $matches)) {
-        $new_line = $matches[1] . $new_vhid . ';';
-        $script = preg_replace($pattern, $new_line, $script);
-        $bak = __FILE__ . '.bak.' . date('YmdHis');
-        if (!@copy(__FILE__, $bak)) {
-            echo "Warning: could not create backup {$bak}\n";
-        }
-        $tmp = __FILE__ . '.tmp.' . getmypid();
-        if (file_put_contents($tmp, $script) === false) {
-            echo "Error: failed to write temp file\n";
-            exit(1);
-        }
-        if (!@rename($tmp, __FILE__)) {
-            echo "Error: failed to install updated script\n";
-            @copy($bak, __FILE__);
-            exit(1);
-        }
+    $cfg = load_config($config_file, $default_config);
+    $cfg['vhid'] = $new_vhid;
 
-        echo "VHID updated to {$new_vhid} (backup: {$bak})\n";
-        exit(0);
+    if (!save_config($config_file, $cfg)) {
+        echo "Error: failed to write config {$config_file}\n";
+        exit(1);
     }
+
+    echo "VHID updated to {$new_vhid}\n";
+    exit(0);
 }
+
+if (isset($argv[1]) && strtolower($argv[1]) === 'show_config') {
+    $cfg = load_config($config_file, $default_config);
+    echo "Config file: {$config_file}\n";
+    echo "---\n";
+    foreach ($cfg as $k => $v) {
+        echo str_pad($k, 15) . " = {$v}\n";
+    }
+    exit(0);
+}
+
+$config = load_config($config_file, $default_config);
 
 require_once("config.inc");
 require_once("interfaces.inc");
@@ -66,21 +120,22 @@ require_once("services.inc");
 require_once("util.inc");
 
 $subsystem = $argv[1] ?? '';
-$type = strtoupper($argv[2] ?? '');
-$conn = strtolower($argv[3] ?? '');
+$type      = strtoupper($argv[2] ?? '');
+$conn      = strtolower($argv[3] ?? '');
 
-$vhid = 1;
-$state_file = "/tmp/pppoe_toggle_ha.state";
-$cooldown_file = '/tmp/pppoe_toggle_ha.cooldown';
-$cooldown_time = 10;
-$ip_timeout = 30;
-$conn_timeout = 300;
-$ifkey = 'wan';
-$real_iface = get_real_interface($ifkey, "inet");
+$vhid          = (int)$config['vhid'];
+$state_file    = $config['state_file'];
+$cooldown_file = $config['cooldown_file'];
+$cooldown_time = (int)$config['cooldown_time'];
+$ip_timeout    = (int)$config['ip_timeout'];
+$conn_timeout  = (int)$config['conn_timeout'];
+$ifkey         = $config['ifkey'];
+$ssh_key       = $config['ssh_key'];
+$nodeA         = $config['nodeA'];
+$nodeB         = $config['nodeB'];
+
+$real_iface   = get_real_interface($ifkey, "inet");
 $track_ifaces = link_interface_to_track6($ifkey);
-$ssh_key = '/root/.ssh/secret.ssh';
-$nodeA = 'gateway1';
-$nodeB = 'gateway2';
 
 function check_cooldown() {
     global $cooldown_file, $cooldown_time;
