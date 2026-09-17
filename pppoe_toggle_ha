@@ -112,7 +112,7 @@ if (isset($argv[1]) && strtolower($argv[1]) === 'show_config') {
     exit(0);
 }
 
-$config = load_config($config_file, $default_config);
+$pth_config = load_config($config_file, $default_config);
 
 require_once("config.inc");
 require_once("interfaces.inc");
@@ -123,16 +123,16 @@ $subsystem = $argv[1] ?? '';
 $type      = strtoupper($argv[2] ?? '');
 $conn      = strtolower($argv[3] ?? '');
 
-$vhid          = (int)$config['vhid'];
-$state_file    = $config['state_file'];
-$cooldown_file = $config['cooldown_file'];
-$cooldown_time = (int)$config['cooldown_time'];
-$ip_timeout    = (int)$config['ip_timeout'];
-$conn_timeout  = (int)$config['conn_timeout'];
-$ifkey         = $config['ifkey'];
-$ssh_key       = $config['ssh_key'];
-$nodeA         = $config['nodeA'];
-$nodeB         = $config['nodeB'];
+$vhid          = (int)$pth_config['vhid'];
+$state_file    = $pth_config['state_file'];
+$cooldown_file = $pth_config['cooldown_file'];
+$cooldown_time = (int)$pth_config['cooldown_time'];
+$ip_timeout    = (int)$pth_config['ip_timeout'];
+$conn_timeout  = (int)$pth_config['conn_timeout'];
+$ifkey         = $pth_config['ifkey'];
+$ssh_key       = $pth_config['ssh_key'];
+$nodeA         = $pth_config['nodeA'];
+$nodeB         = $pth_config['nodeB'];
 
 $real_iface   = get_real_interface($ifkey, "inet");
 $track_ifaces = link_interface_to_track6($ifkey);
