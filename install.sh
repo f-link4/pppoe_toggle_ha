@@ -68,8 +68,8 @@ echo "To change VHID later, reinstall or run: pppoe_toggle_ha set_vhid <number>"
 
 awk -v v="$USER_VHID" '
   BEGIN{ replaced=0 }
-  $0 ~ /^\$vhid[[:space:]]*=/ {
-    print "$vhid = " v ";"
+  $0 ~ /^vhid[[:space:]]*=/ {
+    print "vhid = " v
     replaced=1
     next
   }
