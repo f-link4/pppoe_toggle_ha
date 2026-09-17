@@ -1,0 +1,23 @@
+; pppoe_toggle_ha configuration
+
+; VHID to react on (matches @<VHID> in CARP events)
+vhid = 1
+
+; WAN interface key in pfSense (usually 'wan')
+ifkey = wan
+
+; Hostnames of the two CARP nodes (as returned by `hostname`)
+nodeA = gateway1
+nodeB = gateway2
+
+; SSH key for inter-node communication
+ssh_key = /root/.ssh/secret.ssh
+
+; Timeouts (seconds)
+cooldown_time = 10
+ip_timeout = 30
+conn_timeout = 300
+
+; State file paths (usually don't change)
+state_file = /tmp/pppoe_toggle_ha.state
+cooldown_file = /tmp/pppoe_toggle_ha.cooldown
