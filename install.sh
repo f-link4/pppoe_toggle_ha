@@ -64,12 +64,12 @@ else
     echo "No CARP VHID found on LAN, using default VHID: ${USER_VHID}"
 fi
 
-echo "To change VHID later, reinstall or run: pppoe_toggle_ha set_vhid <number>"
+echo "To change  later, reinstall or run: pppoe_toggle_ha set_ <number>"
 
-awk -v v="$USER_VHID" '
+awk -v v="$USER_" '
   BEGIN{ replaced=0 }
-  $0 ~ /^\$vhidX[[:space:]]*=/ {
-    print "$vhidX = " v ";"
+  $0 ~ /^\$vhid[[:space:]]*=/ {
+    print "$vhid = " v ";"
     replaced=1
     next
   }
