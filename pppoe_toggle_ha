@@ -61,7 +61,15 @@ function load_config(string $file, array $defaults): array
     if ($user === false) {
         return $defaults;
     }
-    return array_merge($defaults, $user);
+    $config = array_merge($defaults, $user);
+
+    foreach ($defaults as $key => $default_value) {
+        if (is_bool($default_value) && array_key_exists($key, $config)) {
+            $config[$key] = filter_var($config[$key], FILTER_VALIDATE_BOOLEAN);
+        }
+    }
+
+    return $config;
 }
 
 function save_config(string $file, array $config): bool
