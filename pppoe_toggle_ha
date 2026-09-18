@@ -48,8 +48,9 @@ $default_config = [
     'conn_timeout'    => 300,
     'state_file'      => '/tmp/pppoe_toggle_ha.state',
     'cooldown_file'   => '/tmp/pppoe_toggle_ha.cooldown',
-    'toggle_wan_gui'  => false,
+    'toggle_ramode'   => 'assist',
     'toggle_dhcpdv6'  => false,
+    'toggle_wan_gui'  => false,
 ];
 
 function load_config(string $file, array $defaults): array
@@ -144,6 +145,7 @@ $ip_timeout      = (int)$pt_config['ip_timeout'];
 $conn_timeout    = (int)$pt_config['conn_timeout'];
 $state_file      = $pt_config['state_file'];
 $cooldown_file   = $pt_config['cooldown_file'];
+$toggle_ramode   = $pt_config['toggle_ramode'];
 $toggle_wan_gui  = !empty($pt_config['toggle_wan_gui']);
 $toggle_dhcpdv6  = !empty($pt_config['toggle_dhcpdv6']);
 
@@ -296,7 +298,7 @@ function kill_states_on_interface($iface)
 
 function manage_dhcpdv6($mode): void
 {
-    global $config, $track_ifaces, $toggle_dhcpdv6;
+    global $config, $track_ifaces, $toggle_dhcpdv6, $toggle_ramode;
 
     if (empty($track_ifaces)) {
         return;
@@ -305,8 +307,8 @@ function manage_dhcpdv6($mode): void
     $changed = false;
     foreach (array_keys($track_ifaces) as $if) {
         if ($mode === 'enable') {
-            if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== 'assist') {
-                $config['dhcpdv6'][$if]['ramode'] = 'assist';
+            if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== $toggle_ramode) {
+                $config['dhcpdv6'][$if]['ramode'] = $toggle_ramode;
                 $changed = true;
             }
 /*
