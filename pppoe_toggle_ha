@@ -152,13 +152,13 @@ $toggle_dhcpdv6  = !empty($pt_config['toggle_dhcpdv6']);
 $real_iface   = get_real_interface($ifkey, "inet");
 $track_ifaces = link_interface_to_track6($ifkey);
 
-function check_cooldown() {
+function cooldown(): bool {
     global $cooldown_file, $cooldown_time;
     $fp = fopen($cooldown_file, 'c+');
     if ($fp === false) {
-        return true;
+        return false;
     }
-    $allowed = false;
+    $blocked = true;
     if (flock($fp, LOCK_EX)) {
         rewind($fp);
         $last = (int)trim(stream_get_contents($fp));
@@ -166,12 +166,12 @@ function check_cooldown() {
             ftruncate($fp, 0);
             rewind($fp);
             fwrite($fp, (string)time());
-            $allowed = true;
+            $blocked = false;
         }
         flock($fp, LOCK_UN);
     }
     fclose($fp);
-    return $allowed;
+    return $blocked;
 }
 
 function pppoe_state($ifkey) {
@@ -561,7 +561,7 @@ if (!update_state_file($type)) {
     exit(0);
 }
 
-if (!check_cooldown()) {
+if (cooldown()) {
     exit(0);
 }
 
