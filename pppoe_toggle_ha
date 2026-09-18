@@ -63,13 +63,11 @@ function load_config(string $file, array $defaults): array
         return $defaults;
     }
     $config = array_merge($defaults, $user);
-
     foreach ($defaults as $key => $default_value) {
         if (is_bool($default_value) && array_key_exists($key, $config)) {
             $config[$key] = filter_var($config[$key], FILTER_VALIDATE_BOOLEAN);
         }
     }
-
     return $config;
 }
 
@@ -86,12 +84,10 @@ function save_config(string $file, array $config): bool
         $lines[] = "{$k} = {$v}";
     }
     $content = implode("\n", $lines) . "\n";
-
     $bak = $file . '.bak.' . date('YmdHis');
     if (file_exists($file)) {
         @copy($file, $bak);
     }
-
     $tmp = $file . '.tmp.' . getmypid();
     if (file_put_contents($tmp, $content) === false) {
         return false;
@@ -111,12 +107,10 @@ if (isset($argv[1]) && strtolower($argv[1]) === 'set_vhid') {
     $new_vhid = (int)$argv[2];
     $cfg = load_config($config_file, $default_config);
     $cfg['vhid'] = $new_vhid;
-
     if (!save_config($config_file, $cfg)) {
         echo "Error: failed to write config {$config_file}\n";
         exit(1);
     }
-
     echo "VHID updated to {$new_vhid}\n";
     exit(0);
 }
@@ -181,13 +175,10 @@ function pppoe_state($ifkey) {
     if (empty($ifkey)) {
         return ['active' => false, 'ip4' => false, 'ip6' => false];
     }
-
     $ip4 = get_interface_ip($ifkey);
     $ip6 = get_interface_ipv6($ifkey);
-
     $ip4 = !empty($ip4) && $ip4 !== '0.0.0.0' && $ip4 !== '127.0.0.1';
     $ip6 = !empty($ip6) && strpos($ip6, 'fe80:') !== 0;
-
     return [
         'active' => $ip4 || $ip6,
         'ip4' => $ip4,
@@ -198,7 +189,6 @@ function pppoe_state($ifkey) {
 function wait_for_wan_ip(int $version): bool
 {
     global $ifkey, $ip_timeout;
-
     $deadline = time() + $ip_timeout;
     while (time() < $deadline) {
         if ($version === 6) {
@@ -208,29 +198,23 @@ function wait_for_wan_ip(int $version): bool
             $ip = get_interface_ip($ifkey);
             $ok = !empty($ip) && $ip !== '0.0.0.0';
         }
-
         if ($ok) {
             return true;
         }
         usleep(200000);
     }
-
     return false;
 }
 
 function wait_for_conn(): bool
 {
     global $conn_timeout;
-
     $deadline = time() + $conn_timeout;
-
     $dns_ip = get_interface_ip('lan');
     if (empty($dns_ip) || $dns_ip === '0.0.0.0') {
         $dns_ip = '127.0.0.1';
     }
-
     $domains = ['cloudflare.com', 'github.com'];
-
     while (time() < $deadline) {
         foreach ($domains as $domain) {
             $check_fqdn = 'check-' . mt_rand(1000000, 9999999) . '.' . $domain;
@@ -241,26 +225,21 @@ function wait_for_conn(): bool
         }
         sleep(1);
     }
-
     return false;
 }
 
 function flush_lan_ipv6(): void
 {
     global $config, $track_ifaces;
-
     if (empty($track_ifaces)) {
         return;
     }
-
     foreach ($track_ifaces as $iface => $ifcfg) {
         if (empty($config['interfaces'][$iface])) {
             continue;
         }
-
         $real_iface = get_real_interface($iface, 'inet6');
         $ip6 = get_interface_ipv6($iface);
-
         if (!empty($ip6)) {
             $addr = explode('%', $ip6)[0];
             if (filter_var($addr, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
@@ -273,16 +252,13 @@ function flush_lan_ipv6(): void
 function flush_wan_ipv6(): void
 {
     global $real_iface;
-
     if (empty($real_iface)) {
         return;
     }
-
     $out = shell_exec("/sbin/ifconfig " . escapeshellarg($real_iface) . " inet6 2>/dev/null");
     if ($out === null || $out === '') {
         return;
     }
-
     if (preg_match_all('/inet6\s+([0-9a-fA-F:]+)(?:%[^\s]+)?/i', $out, $m)) {
         foreach ($m[1] as $ip6) {
             $addr = explode('%', $ip6)[0];
@@ -302,16 +278,13 @@ function kill_states_on_interface($iface)
 function manage_dhcpdv6($mode): void
 {
     global $config, $default_config, $track_ifaces, $toggle_dhcpdv6, $toggle_ramode;
-
     if (empty($track_ifaces)) {
         return;
     }
-
     $valid_ramodes = ['disabled', 'router', 'unmanaged', 'managed', 'assist', 'stateless'];
     if (!in_array($toggle_ramode, $valid_ramodes, true)) {
         $toggle_ramode = $default_config['toggle_ramode'] ?? 'assist';
     }
-
     $changed = false;
     foreach (array_keys($track_ifaces) as $if) {
         if ($mode === 'enable') {
@@ -329,7 +302,6 @@ function manage_dhcpdv6($mode): void
                 $config['dhcpdv6'][$if]['enable'] = '';
                 $changed = true;
             }
-
         } else {
             if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== 'disabled') {
                 $config['dhcpdv6'][$if]['ramode'] = 'disabled';
@@ -347,7 +319,6 @@ function manage_dhcpdv6($mode): void
             }
         }
     }
-
     if ($changed) {
         write_config("CARP: " . ($mode === 'enable' ? 'Enabled' : 'Disabled') . " radvd+DHCPv6 on " . implode(',', array_keys($track_ifaces)), false);
         services_radvd_configure();
@@ -360,98 +331,75 @@ function manage_dhcpdv6($mode): void
 function update_state_file($state, $write = false): bool
 {
     global $vhid, $state_file;
-
     $new_state = "@{$vhid}|{$state}";
     $fp = fopen($state_file, 'c+');
     if ($fp === false) {
         return true;
     }
-
     $changed = true;
     if (flock($fp, LOCK_EX)) {
         rewind($fp);
         $old_state = trim(stream_get_contents($fp));
         $changed = ($old_state !== $new_state);
-
         if ($write && $changed) {
             ftruncate($fp, 0);
             rewind($fp);
             fwrite($fp, $new_state);
         }
-
         flock($fp, LOCK_UN);
     }
     fclose($fp);
-
     return $changed;
 }
 
 function apply_carp_state($state): void
 {
     global $config, $conn, $ifkey, $real_iface, $pppoe_state, $is_enabled, $toggle_wan_gui;
-
     switch ($state) {
-
         case 'MASTER':
             if (!$pppoe_state['active']) {
-
                 if (mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " up") !== 0) {
                     exit(1);
                 }
-
                 if (wait_for_wan_ip(4)) {
                     interface_dhcpv6_configure($real_iface, $config['interfaces'][$ifkey], true);
                 } else {
                     exit(1);
                 }
-
                 if (!wait_for_wan_ip(6)) {
                     interface_dhcpv6_configure($real_iface, $config['interfaces'][$ifkey], true);
                 }
-
                 if ($toggle_wan_gui && !$is_enabled) {
                     $config['interfaces'][$ifkey]['enable'] = '1';
                     write_config("enable interface '{$ifkey}' due CARP event '{$state}'", false);
                     //interface_configure($ifkey);
                 }
-
                 if (wait_for_wan_ip(6)) {
                     manage_dhcpdv6('enable');
                 }
-
                 if ($conn === 'conn') {
                     if (!wait_for_conn()) {
                         exit(1);
                     }
                 }
-
                 mwexec("/usr/local/sbin/pppoe_toggle_ha_master.sh");
-
             }
             break;
-
         case 'BACKUP':
             if ($pppoe_state['active']) {
-
                 manage_dhcpdv6('disable');
-
                 if ($toggle_wan_gui && $is_enabled) {
                     unset($config['interfaces'][$ifkey]['enable']);
                     write_config("disable interface '{$ifkey}' due CARP event '{$state}'", false);
                     //interface_configure($ifkey);
                 }
-
                 mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " down");
-
                 kill_states_on_interface($real_iface);
                 flush_wan_ipv6();
                 flush_lan_ipv6();
-
                 mwexec("/usr/local/sbin/pppoe_toggle_ha_backup.sh");
-
             }
             break;
-
         case 'INIT':
         default:
             break;
@@ -462,58 +410,45 @@ function apply_carp_state($state): void
 function peer_cmd(string $cmd): bool
 {
     global $ssh_key, $nodeA, $nodeB;
-
     $self = strtolower(php_uname('n'));
     $peer = '';
-
     if (strpos($self, $nodeA) !== false) {
         $peer = $nodeB;
     } elseif (strpos($self, $nodeB) !== false) {
         $peer = $nodeA;
     }
-
     if ($peer === '') {
         return false;
     }
-
     exec("ssh -i " . escapeshellarg($ssh_key)
         . " -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
         . " " . escapeshellarg("root@{$peer}")
         . " " . escapeshellarg($cmd)
         . " 2>&1", $out, $ret);
-
     return $ret === 0;
 }
 
 function apply_handover(): void
 {
     global $vhid, $carp_state;
-
     if ($carp_state !== 'MASTER') {
         exit(1);
     }
-
     if (!peer_cmd("/usr/local/sbin/pppoe_toggle_ha @" . (int)$vhid . " MASTER conn && /usr/local/sbin/pfSsh.php playback disablecarpmaint")) {
         exit(1);
     }
-
     interfaces_carp_set_maintenancemode(true);
-
 }
 
 function apply_takeover(): void
 {
     global $carp_state, $conn;
-
     if ($carp_state !== 'BACKUP') {
         exit(1);
     }
-
     $conn = 'conn';
     apply_carp_state('MASTER');
-
     interfaces_carp_set_maintenancemode(false);
-
     if (!peer_cmd("/usr/local/sbin/pfSsh.php playback enablecarpmaint")) {
         exit(1);
     }
@@ -527,50 +462,40 @@ if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONCILE') {
     apply_carp_state($carp_state);
     exit(0);
 }
-
 if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONNECT') {
     if ($pppoe_state['active']) {
         interface_configure($ifkey);
     }
     exit(0);
 }
-
 if (isset($argv[1]) && strtoupper($argv[1]) === 'HANDOVER') {
     apply_handover();
     exit(0);
 }
-
 if (isset($argv[1]) && strtoupper($argv[1]) === 'TAKEOVER') {
     apply_takeover();
     exit(0);
 }
-
 if (isset($argv[1]) && strtoupper($argv[1]) === 'RELEASE') {
     interfaces_carp_set_maintenancemode(false);
     peer_cmd("/usr/local/sbin/pfSsh.php playback disablecarpmaint");
     exit(0);
 }
-
 if (preg_match('/@(\d+)$/', $subsystem, $matches) || preg_match('/^(\d+)@/', $subsystem, $matches)) {
     $vhidX = (int)$matches[1];
 } else {
     exit(1);
 }
-
 if (!in_array($type, ['MASTER', 'BACKUP', 'INIT'])) {
     exit(1);
 }
-
 if ($vhidX !== $vhid) {
     exit(0);
 }
-
 if (!update_state_file($type)) {
     exit(0);
 }
-
 if (cooldown()) {
     exit(0);
 }
-
 apply_carp_state($type);
