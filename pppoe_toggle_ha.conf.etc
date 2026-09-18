@@ -22,8 +22,14 @@ conn_timeout = 300
 state_file = /tmp/pppoe_toggle_ha.state
 cooldown_file = /tmp/pppoe_toggle_ha.cooldown
 
-; Hide WAN from pfSense GUI when CARP is BACKUP
-; true  = WAN disappears from GUI on BACKUP (like disabled interface)
+; Toggle WAN enable/disable in pfSense GUI with CARP
 ; false = WAN stays in GUI with ↑↓ arrow (default)
+; true  = WAN disappears from GUI on BACKUP (like disabled interface)
 ; WARNING: writes to /cf/conf/config.xml on every CARP event
-hide_wan_gui = false
+toggle_wan_gui = false
+
+; Toggle DHCPv6 server on track interfaces with CARP
+; false = only manage RADVD via ramode (default)
+; true  = also enable/disable DHCPv6 server and reconfigure dhcpd6
+; WARNING: may restart dhcpd6 on every CARP event
+toggle_dhcpdv6 = false
