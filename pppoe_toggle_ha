@@ -125,15 +125,15 @@ $type      = strtoupper($argv[2] ?? '');
 $conn      = strtolower($argv[3] ?? '');
 
 $vhid          = (int)$pt_config['vhid'];
-$state_file    = $pt_config['state_file'];
-$cooldown_file = $pt_config['cooldown_file'];
+$ifkey         = $pt_config['ifkey'];
+$nodeA         = $pt_config['nodeA'];
+$nodeB         = $pt_config['nodeB'];
+$ssh_key       = $pt_config['ssh_key'];
 $cooldown_time = (int)$pt_config['cooldown_time'];
 $ip_timeout    = (int)$pt_config['ip_timeout'];
 $conn_timeout  = (int)$pt_config['conn_timeout'];
-$ifkey         = $pt_config['ifkey'];
-$ssh_key       = $pt_config['ssh_key'];
-$nodeA         = $pt_config['nodeA'];
-$nodeB         = $pt_config['nodeB'];
+$state_file    = $pt_config['state_file'];
+$cooldown_file = $pt_config['cooldown_file'];
 $hide_wan_gui  = !empty($pt_config['hide_wan_gui']);
 
 $real_iface   = get_real_interface($ifkey, "inet");
