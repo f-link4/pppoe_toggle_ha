@@ -21,3 +21,9 @@ conn_timeout = 300
 ; State file paths (usually don't change)
 state_file = /tmp/pppoe_toggle_ha.state
 cooldown_file = /tmp/pppoe_toggle_ha.cooldown
+
+; Hide WAN from pfSense GUI when CARP is BACKUP
+; true  = WAN disappears from GUI on BACKUP (like disabled interface)
+; false = WAN stays in GUI with ↑↓ arrow (default)
+; WARNING: writes to /cf/conf/config.xml on every CARP event
+hide_wan_gui = false
