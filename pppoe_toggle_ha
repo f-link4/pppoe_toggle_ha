@@ -231,7 +231,7 @@ function wait_for_conn(): bool
 
 function flush_lan_ipv6(): void
 {
-    global $config, $ifkey, $track_ifaces;
+    global $config, $track_ifaces;
 
     if (empty($track_ifaces)) {
         return;
@@ -285,7 +285,7 @@ function kill_states_on_interface($iface)
 
 function manage_dhcpdv6($mode): void
 {
-    global $config, $ifkey, $track_ifaces;
+    global $config, $track_ifaces;
 
     if (empty($track_ifaces)) {
         return;
@@ -366,7 +366,7 @@ function update_state_file($state, $write = false): bool
 
 function apply_carp_state($state): void
 {
-    global $config, $type, $conn, $ifkey, $real_iface, $pppoe_state, $is_enabled, $hide_wan_gui;
+    global $config, $conn, $ifkey, $real_iface, $pppoe_state, $is_enabled, $hide_wan_gui;
 
     switch ($state) {
 
