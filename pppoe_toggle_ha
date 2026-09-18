@@ -38,17 +38,18 @@ require_once("util.inc");
 $config_file = '/usr/local/etc/pppoe_toggle_ha.conf';
 
 $default_config = [
-    'vhid'          => 1,
-    'ifkey'         => 'wan',
-    'nodeA'         => 'gateway1',
-    'nodeB'         => 'gateway2',
-    'ssh_key'       => '/root/.ssh/secret.ssh',
-    'cooldown_time' => 10,
-    'ip_timeout'    => 30,
-    'conn_timeout'  => 300,
-    'state_file'    => '/tmp/pppoe_toggle_ha.state',
-    'cooldown_file' => '/tmp/pppoe_toggle_ha.cooldown',
-    'hide_wan_gui'  => false,
+    'vhid'            => 1,
+    'ifkey'           => 'wan',
+    'nodeA'           => 'gateway1',
+    'nodeB'           => 'gateway2',
+    'ssh_key'         => '/root/.ssh/secret.ssh',
+    'cooldown_time'   => 10,
+    'ip_timeout'      => 30,
+    'conn_timeout'    => 300,
+    'state_file'      => '/tmp/pppoe_toggle_ha.state',
+    'cooldown_file'   => '/tmp/pppoe_toggle_ha.cooldown',
+    'toggle_wan_gui'  => false,
+    'toggle_dhcpdv6'  => false,
 ];
 
 function load_config(string $file, array $defaults): array
@@ -124,17 +125,18 @@ $subsystem = $argv[1] ?? '';
 $type      = strtoupper($argv[2] ?? '');
 $conn      = strtolower($argv[3] ?? '');
 
-$vhid          = (int)$pt_config['vhid'];
-$ifkey         = $pt_config['ifkey'];
-$nodeA         = $pt_config['nodeA'];
-$nodeB         = $pt_config['nodeB'];
-$ssh_key       = $pt_config['ssh_key'];
-$cooldown_time = (int)$pt_config['cooldown_time'];
-$ip_timeout    = (int)$pt_config['ip_timeout'];
-$conn_timeout  = (int)$pt_config['conn_timeout'];
-$state_file    = $pt_config['state_file'];
-$cooldown_file = $pt_config['cooldown_file'];
-$hide_wan_gui  = !empty($pt_config['hide_wan_gui']);
+$vhid            = (int)$pt_config['vhid'];
+$ifkey           = $pt_config['ifkey'];
+$nodeA           = $pt_config['nodeA'];
+$nodeB           = $pt_config['nodeB'];
+$ssh_key         = $pt_config['ssh_key'];
+$cooldown_time   = (int)$pt_config['cooldown_time'];
+$ip_timeout      = (int)$pt_config['ip_timeout'];
+$conn_timeout    = (int)$pt_config['conn_timeout'];
+$state_file      = $pt_config['state_file'];
+$cooldown_file   = $pt_config['cooldown_file'];
+$toggle_wan_gui  = !empty($pt_config['toggle_wan_gui']);
+$toggle_dhcpdv6  = !empty($pt_config['toggle_dhcpdv6']);
 
 $real_iface   = get_real_interface($ifkey, "inet");
 $track_ifaces = link_interface_to_track6($ifkey);
@@ -285,7 +287,7 @@ function kill_states_on_interface($iface)
 
 function manage_dhcpdv6($mode): void
 {
-    global $config, $track_ifaces;
+    global $config, $track_ifaces, $toggle_dhcpdv6;
 
     if (empty($track_ifaces)) {
         return;
@@ -303,11 +305,12 @@ function manage_dhcpdv6($mode): void
                 $config['dhcpdv6'][$if]['rapriority'] = 'medium';
                 $changed = true;
             }
-            if (!isset($config['dhcpdv6'][$if]['enable'])) {
+*/
+            if ($toggle_dhcpdv6 && !isset($config['dhcpdv6'][$if]['enable'])) {
                 $config['dhcpdv6'][$if]['enable'] = '';
                 $changed = true;
             }
-*/
+
         } else {
             if (($config['dhcpdv6'][$if]['ramode'] ?? '') !== 'disabled') {
                 $config['dhcpdv6'][$if]['ramode'] = 'disabled';
@@ -318,20 +321,20 @@ function manage_dhcpdv6($mode): void
                 $config['dhcpdv6'][$if]['rapriority'] = 'low';
                 $changed = true;
             }
-            if (isset($config['dhcpdv6'][$if]['enable'])) {
+*/
+            if ($toggle_dhcpdv6 && isset($config['dhcpdv6'][$if]['enable'])) {
                 unset($config['dhcpdv6'][$if]['enable']);
                 $changed = true;
             }
-*/
         }
     }
 
     if ($changed) {
         write_config("CARP: " . ($mode === 'enable' ? 'Enabled' : 'Disabled') . " radvd+DHCPv6 on " . implode(',', array_keys($track_ifaces)), false);
         services_radvd_configure();
-/*
-        services_dhcpdv6_configure();
-*/
+        if ($toggle_dhcpdv6) {
+            services_dhcpdv6_configure();
+        }
     }
 }
 
@@ -366,7 +369,7 @@ function update_state_file($state, $write = false): bool
 
 function apply_carp_state($state): void
 {
-    global $config, $conn, $ifkey, $real_iface, $pppoe_state, $is_enabled, $hide_wan_gui;
+    global $config, $conn, $ifkey, $real_iface, $pppoe_state, $is_enabled, $toggle_wan_gui;
 
     switch ($state) {
 
@@ -387,7 +390,7 @@ function apply_carp_state($state): void
                     interface_dhcpv6_configure($real_iface, $config['interfaces'][$ifkey], true);
                 }
 
-                if ($hide_wan_gui && !$is_enabled) {
+                if ($toggle_wan_gui && !$is_enabled) {
                     $config['interfaces'][$ifkey]['enable'] = '1';
                     write_config("enable interface '{$ifkey}' due CARP event '{$state}'", false);
                     //interface_configure($ifkey);
@@ -413,7 +416,7 @@ function apply_carp_state($state): void
 
                 manage_dhcpdv6('disable');
 
-                if ($hide_wan_gui && $is_enabled) {
+                if ($toggle_wan_gui && $is_enabled) {
                     unset($config['interfaces'][$ifkey]['enable']);
                     write_config("disable interface '{$ifkey}' due CARP event '{$state}'", false);
                     //interface_configure($ifkey);
