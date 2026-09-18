@@ -114,7 +114,8 @@ if (isset($argv[1]) && strtolower($argv[1]) === 'show_config') {
     echo "Config file: {$config_file}\n";
     echo "---\n";
     foreach ($cfg as $k => $v) {
-        echo str_pad($k, 15) . " = {$v}\n";
+        $display = is_bool($v) ? ($v ? 'true' : 'false') : $v;
+        echo str_pad($k, 15) . " = {$display}\n";
     }
     exit(0);
 }
