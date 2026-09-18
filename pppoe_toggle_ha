@@ -80,6 +80,9 @@ function save_config(string $file, array $config): bool
         '',
     ];
     foreach ($config as $k => $v) {
+        if (is_bool($v)) {
+            $v = $v ? 'true' : 'false';
+        }
         $lines[] = "{$k} = {$v}";
     }
     $content = implode("\n", $lines) . "\n";
@@ -298,10 +301,15 @@ function kill_states_on_interface($iface)
 
 function manage_dhcpdv6($mode): void
 {
-    global $config, $track_ifaces, $toggle_dhcpdv6, $toggle_ramode;
+    global $config, $default_config, $track_ifaces, $toggle_dhcpdv6, $toggle_ramode;
 
     if (empty($track_ifaces)) {
         return;
+    }
+
+    $valid_ramodes = ['disabled', 'router', 'unmanaged', 'managed', 'assist', 'stateless'];
+    if (!in_array($toggle_ramode, $valid_ramodes, true)) {
+        $toggle_ramode = $default_config['toggle_ramode'] ?? 'assist';
     }
 
     $changed = false;
