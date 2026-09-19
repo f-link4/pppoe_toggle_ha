@@ -1,0 +1,46 @@
+; pppoe_toggle_ha configuration
+
+; VHID to react on (matches @<VHID> in CARP events)
+vhid = 1
+
+; WAN interface key in pfSense (usually 'wan')
+ifkey = wan
+
+; Hostnames of the two CARP nodes (as returned by `hostname`)
+nodeA = gateway1
+nodeB = gateway2
+
+; SSH key for inter-node communication
+ssh_key = /root/.ssh/secret.ssh
+
+; Timeouts (seconds)
+cooldown_time = 10
+ip_timeout = 30
+conn_timeout = 300
+
+; State file paths (usually don't change)
+state_file = /tmp/pppoe_toggle_ha.state
+cooldown_file = /tmp/pppoe_toggle_ha.cooldown
+
+; RADVD mode on track interfaces when CARP is MASTER
+; Values:
+;   disabled  - RADVD will not be enabled on this interface
+;   router    - Will advertise this router
+;   unmanaged - Will advertise this router with Stateless Address Auto-Configuration (SLAAC)
+;   managed   - Will advertise this router with all configuration through a DHCPv6 server
+;   assist    - Will advertise this router with configuration through a DHCPv6 server and/or SLAAC
+;   stateless - Will advertise this router with SLAAC and other configuration information available via DHCPv6
+; BACKUP always sets 'disabled'
+toggle_ramode = assist
+
+; Toggle DHCPv6 server on track interfaces with CARP
+; false = only manage RADVD via ramode (default)
+; true  = also enable/disable DHCPv6 server and reconfigure dhcpd6
+; WARNING: may restart dhcpd6 on every CARP event
+toggle_dhcpdv6 = false
+
+; EXPERIMENTAL - may behave unexpectedly, use with caution
+; Toggle WAN enable/disable in pfSense GUI with CARP
+; false = WAN stays in GUI with ↑↓ arrow (default)
+; true  = WAN disappears from GUI on BACKUP (like disabled interface)
+toggle_wan_gui = false
