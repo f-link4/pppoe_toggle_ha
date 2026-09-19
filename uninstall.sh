@@ -44,7 +44,6 @@ if [ -f "$AUTHORIZED_KEYS" ]; then
         awk '!/pppoe_toggle_ha/' "$AUTHORIZED_KEYS" > "${AUTHORIZED_KEYS}.tmp.$$" \
             && mv "${AUTHORIZED_KEYS}.tmp.$$" "$AUTHORIZED_KEYS"
         chmod 600 "$AUTHORIZED_KEYS"
-        echo "Removed pppoe_toggle_ha key from authorized_keys"
     fi
 fi
 
