@@ -409,16 +409,12 @@ function apply_carp_state($state): void
 
 function peer_cmd(string $cmd): bool
 {
-    global $ssh_key, $nodeA, $nodeB;
-    $xml = simplexml_load_file('/conf/config.xml');
-    if ($xml === false) {
-        return false;
-    }
-    $iface = trim((string)($xml->hasync->pfsyncinterface ?? ''));
+    global $ssh_key, $nodeA, $nodeB, $config;
+    $iface = trim((string)($config['hasync']['pfsyncinterface'] ?? ''));
     if ($iface === '') {
         return false;
     }
-    $self = trim((string)get_interface_ip($iface));
+    $self = trim((string)($config['interfaces'][$iface]['ipaddr'] ?? ''));
     $nodeA = trim((string)$nodeA);
     $nodeB = trim((string)$nodeB);
     if ($self === '' || $nodeA === '' || $nodeB === '') {
@@ -431,6 +427,7 @@ function peer_cmd(string $cmd): bool
     } else {
         return false;
     }
+    $out = [];
     exec(
         "ssh -i " . escapeshellarg($ssh_key)
         . " -o StrictHostKeyChecking=accept-new"
