@@ -173,16 +173,18 @@ function cooldown(): bool {
 
 function pppoe_state($ifkey) {
     if (empty($ifkey)) {
-        return ['active' => false, 'ip4' => false, 'ip6' => false];
+        return [ 'active' => false, 'ipv4state' => false, 'ipv6state' => false, 'ip4' => null, 'ip6' => null ];
     }
     $ip4 = get_interface_ip($ifkey);
     $ip6 = get_interface_ipv6($ifkey);
-    $ip4 = !empty($ip4) && $ip4 !== '0.0.0.0' && $ip4 !== '127.0.0.1';
-    $ip6 = !empty($ip6) && strpos($ip6, 'fe80:') !== 0;
+    $ipv4state = !empty($ip4) && $ip4 !== '0.0.0.0' && $ip4 !== '127.0.0.1';
+    $ipv6state = !empty($ip6) && strpos($ip6, 'fe80:') !== 0;
     return [
-        'active' => $ip4 || $ip6,
-        'ip4' => $ip4,
-        'ip6' => $ip6,
+        'active'    => $ipv4state || $ipv6state,
+        'ipv4state' => $ipv4state,
+        'ipv6state' => $ipv6state,
+        'ip4'       => $ipv4state ? $ip4 : null,
+        'ip6'       => $ipv6state ? $ip6 : null,
     ];
 }
 
@@ -192,14 +194,13 @@ function wait_for_wan_ip(int $version): bool
     $deadline = time() + $ip_timeout;
     while (time() < $deadline) {
         if ($version === 6) {
-            $ip = get_interface_ipv6($ifkey);
-            $ok = !empty($ip) && strpos($ip, 'fe80:') !== 0;
+            if (pppoe_state($ifkey)['ipv6state']) {
+                return true;
+            }
         } else {
-            $ip = get_interface_ip($ifkey);
-            $ok = !empty($ip) && $ip !== '0.0.0.0';
-        }
-        if ($ok) {
-            return true;
+            if (pppoe_state($ifkey)['ipv4state']) {
+                return true;
+            }
         }
         usleep(200000);
     }
@@ -271,8 +272,8 @@ function flush_wan_ipv6(): void
 
 function kill_states_on_interface($iface)
 {
-    pfSense_kill_states("0.0.0.0/0", $iface);
-    pfSense_kill_states("::/0", $iface);
+    mwexec("/sbin/pfctl -k 0.0.0.0/0 -i " . escapeshellarg($iface), true);
+    mwexec("/sbin/pfctl -k ::/0 -i " . escapeshellarg($iface), true);
 }
 
 function manage_dhcpdv6($mode): void
@@ -369,6 +370,7 @@ function apply_carp_state($state): void
                 if (!wait_for_wan_ip(6)) {
                     interface_dhcpv6_configure($real_iface, $config['interfaces'][$ifkey], true);
                 }
+                //kill_states_on_interface($real_iface);
                 if ($toggle_wan_gui && !$is_enabled) {
                     $config['interfaces'][$ifkey]['enable'] = '1';
                     write_config("enable interface '{$ifkey}' due CARP event '{$state}'", false);
@@ -394,7 +396,13 @@ function apply_carp_state($state): void
                     //interface_configure($ifkey);
                 }
                 mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " down");
-                kill_states_on_interface($real_iface);
+                //kill_states_on_interface($real_iface);
+                if (!empty($pppoe_state['ip4'])) {
+                    mwexec("/sbin/pfctl -k " . escapeshellarg($pppoe_state['ip4']), true);
+                }
+                if (!empty($pppoe_state['ip6'])) {
+                    mwexec("/sbin/pfctl -k " . escapeshellarg($pppoe_state['ip6']), true);
+                }
                 flush_wan_ipv6();
                 flush_lan_ipv6();
                 mwexec("/usr/local/sbin/pppoe_toggle_ha_backup.sh");
