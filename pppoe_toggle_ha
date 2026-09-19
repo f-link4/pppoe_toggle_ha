@@ -270,12 +270,6 @@ function flush_wan_ipv6(): void
     }
 }
 
-function kill_states_on_interface($iface)
-{
-    mwexec("/sbin/pfctl -k 0.0.0.0/0 -i " . escapeshellarg($iface), true);
-    mwexec("/sbin/pfctl -k ::/0 -i " . escapeshellarg($iface), true);
-}
-
 function manage_dhcpdv6($mode): void
 {
     global $config, $default_config, $track_ifaces, $toggle_dhcpdv6, $toggle_ramode;
@@ -370,7 +364,6 @@ function apply_carp_state($state): void
                 if (!wait_for_wan_ip(6)) {
                     interface_dhcpv6_configure($real_iface, $config['interfaces'][$ifkey], true);
                 }
-                //kill_states_on_interface($real_iface);
                 if ($toggle_wan_gui && !$is_enabled) {
                     $config['interfaces'][$ifkey]['enable'] = '1';
                     write_config("enable interface '{$ifkey}' due CARP event '{$state}'", false);
@@ -396,7 +389,6 @@ function apply_carp_state($state): void
                     //interface_configure($ifkey);
                 }
                 mwexec("/sbin/ifconfig " . escapeshellarg($real_iface) . " down");
-                //kill_states_on_interface($real_iface);
                 if (!empty($pppoe_state['ip4'])) {
                     mwexec("/sbin/pfctl -k " . escapeshellarg($pppoe_state['ip4']), true);
                 }
