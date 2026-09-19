@@ -7,8 +7,8 @@ vhid = 1
 ifkey = wan
 
 ; Hostnames of the two CARP nodes (as returned by `hostname`)
-nodeA = gateway1
-nodeB = gateway2
+nodeA = 
+nodeB = 
 
 ; SSH key for inter-node communication
 ssh_key = /root/.ssh/secret.ssh
