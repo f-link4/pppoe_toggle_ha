@@ -6,7 +6,7 @@ vhid = 1
 ; WAN interface key in pfSense (usually 'wan')
 ifkey = wan
 
-; Hostnames of the two CARP nodes (as returned by `hostname`)
+; Sync IPs of the two CARP nodes (auto-detected by installer)
 nodeA = 
 nodeB = 
 
