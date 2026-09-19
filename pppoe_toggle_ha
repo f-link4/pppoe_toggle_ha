@@ -409,7 +409,7 @@ function apply_carp_state($state): void
 
 function peer_cmd(string $cmd): bool
 {
-    global $ssh_key, $nodeA, $nodeB, $config;
+    global $config, $nodeA, $nodeB, $ssh_key;
     $iface = trim((string)($config['hasync']['pfsyncinterface'] ?? ''));
     if ($iface === '') {
         return false;
