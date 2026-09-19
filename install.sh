@@ -150,7 +150,10 @@ if [ -n "$PEER_SYNC_IP" ]; then
     echo ""
     echo "Copy the private key to PEER:"
     echo ""
-    echo "  cat $SSH_KEY | ssh root@$PEER_SYNC_IP 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && cat > $SSH_KEY && chmod 600 $SSH_KEY'"
+    echo "  cat $SSH_KEY | ssh root@$PEER_SYNC_IP \\"
+    echo "    'mkdir -p /root/.ssh && chmod 700 /root/.ssh && \\"
+    echo "     cat > $SSH_KEY && \\
+    echo "     chmod 600 $SSH_KEY'"
     echo ""
     echo "Then run the installer on PEER."
     echo ""
