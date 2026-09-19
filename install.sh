@@ -102,12 +102,12 @@ detect_node_ips() {
 NODE_INFO=$(detect_node_ips || true)
 if [ -n "$NODE_INFO" ]; then
     SELF_SYNC_IP=$(echo "$NODE_INFO" | head -1)
-    PEER_IP=$(echo "$NODE_INFO" | tail -1)
+    PEER_SYNC_IP=$(echo "$NODE_INFO" | tail -1)
     
-    if [ -n "$SELF_SYNC_IP" ] && [ -n "$PEER_IP" ]; then
+    if [ -n "$SELF_SYNC_IP" ] && [ -n "$PEER_SYNC_IP" ]; then
         echo "Detected self sync IP: ${SELF_SYNC_IP}"
-        echo "Detected peer IP:      ${PEER_IP}"
-        awk -v a="$SELF_SYNC_IP" -v b="$PEER_IP" '
+        echo "Detected peer sync IP: ${PEER_SYNC_IP}"
+        awk -v a="$SELF_SYNC_IP" -v b="$PEER_SYNC_IP" '
           /^nodeA[[:space:]]*=/ { print "nodeA = " a; next }
           /^nodeB[[:space:]]*=/ { print "nodeB = " b; next }
           { print }
