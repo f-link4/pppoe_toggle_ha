@@ -11,7 +11,7 @@ nodeA =
 nodeB = 
 
 ; SSH key for inter-node communication
-ssh_key = /root/.ssh/secret.ssh
+ssh_key = /root/.ssh/pppoe_toggle_ha.ssh
 
 ; Timeouts (seconds)
 cooldown_time = 10
