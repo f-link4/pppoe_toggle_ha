@@ -25,6 +25,7 @@ FILES="
 /usr/local/etc/rc.d/pppoe_toggle_ha
 /usr/local/etc/devd/pppoe_toggle_ha.conf
 /usr/local/etc/pppoe_toggle_ha.conf
+/root/.ssh/pppoe_toggle_ha.ssh
 /tmp/pppoe_toggle_ha.state
 /tmp/pppoe_toggle_ha.cooldown
 "
@@ -35,6 +36,17 @@ for f in $FILES; do
         echo "Not found: $f"
     fi
 done
+
+echo "Removing key from authorized_keys..."
+AUTHORIZED_KEYS="/root/.ssh/authorized_keys"
+if [ -f "$AUTHORIZED_KEYS" ]; then
+    if grep -q 'pppoe_toggle_ha' "$AUTHORIZED_KEYS" 2>/dev/null; then
+        awk '!/pppoe_toggle_ha/' "$AUTHORIZED_KEYS" > "${AUTHORIZED_KEYS}.tmp.$$" \
+            && mv "${AUTHORIZED_KEYS}.tmp.$$" "$AUTHORIZED_KEYS"
+        chmod 600 "$AUTHORIZED_KEYS"
+        echo "Removed pppoe_toggle_ha key from authorized_keys"
+    fi
+fi
 
 echo "Removing from autostart..."
 if command -v sysrc >/dev/null 2>&1; then
