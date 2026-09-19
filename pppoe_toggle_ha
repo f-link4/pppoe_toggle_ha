@@ -410,27 +410,37 @@ function apply_carp_state($state): void
 function peer_cmd(string $cmd): bool
 {
     global $ssh_key, $nodeA, $nodeB;
-    
-    $xml = simplexml_load_file("/conf/config.xml");
+    $xml = simplexml_load_file('/conf/config.xml');
     if ($xml === false) {
         return false;
     }
-    $iface = (string)$xml->hasync->pfsyncinterface;
-    $self = get_interface_ip($iface);
-    $peer = '';
+    $iface = trim((string)($xml->hasync->pfsyncinterface ?? ''));
+    if ($iface === '') {
+        return false;
+    }
+    $self = trim((string)get_interface_ip($iface));
+    $nodeA = trim((string)$nodeA);
+    $nodeB = trim((string)$nodeB);
+    if ($self === '' || $nodeA === '' || $nodeB === '') {
+        return false;
+    }
     if ($self === $nodeA) {
         $peer = $nodeB;
     } elseif ($self === $nodeB) {
         $peer = $nodeA;
-    }
-    if ($peer === '') {
+    } else {
         return false;
     }
-    exec("ssh -i " . escapeshellarg($ssh_key)
-        . " -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
-        . " " . escapeshellarg("root@{$peer}")
+    exec(
+        "ssh -i " . escapeshellarg($ssh_key)
+        . " -o StrictHostKeyChecking=accept-new"
+        . " -o ConnectTimeout=10 "
+        . escapeshellarg("root@{$peer}")
         . " " . escapeshellarg($cmd)
-        . " 2>&1", $out, $ret);
+        . " 2>&1",
+        $out,
+        $ret
+    );
     return $ret === 0;
 }
 
