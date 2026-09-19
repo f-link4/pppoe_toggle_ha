@@ -64,18 +64,18 @@ else
     echo "No CARP VHID found on LAN, using default VHID: ${USER_VHID}"
 fi
 
-echo "To change  later, reinstall or run: pppoe_toggle_ha set_ <number>"
+echo "To change VHID later, reinstall or run: pppoe_toggle_ha set_vhid <number>"
 
-awk -v v="$USER_" '
+awk -v v="$USER_VHID" '
   BEGIN{ replaced=0 }
-  $0 ~ /^\$vhid[[:space:]]*=/ {
-    print "$vhid = " v ";"
+  $0 ~ /^vhid[[:space:]]*=/ {
+    print "vhid = " v
     replaced=1
     next
   }
   { print }
   END { if (replaced==0) exit 1 }
-' pppoe_toggle_ha > pppoe_toggle_ha.new && mv pppoe_toggle_ha.new pppoe_toggle_ha
+' pppoe_toggle_ha.conf.etc > pppoe_toggle_ha.conf.etc.new && mv pppoe_toggle_ha.conf.etc.new pppoe_toggle_ha.conf.etc
 
 echo ""
 echo "Installing files..."
@@ -84,6 +84,7 @@ install -m 0755 -v pppoe_toggle_ha /usr/local/sbin/ || exit 1
 install -m 0755 -v pppoe_toggle_ha_master.sh /usr/local/sbin/pppoe_toggle_ha_master.sh || true
 install -m 0755 -v pppoe_toggle_ha_backup.sh /usr/local/sbin/pppoe_toggle_ha_backup.sh || true
 install -m 0755 -v pppoe_toggle_ha.rc /usr/local/etc/rc.d/pppoe_toggle_ha || true
+install -m 0644 -v pppoe_toggle_ha.conf.etc /usr/local/etc/pppoe_toggle_ha.conf || true
 install -m 0644 -v pppoe_toggle_ha.conf /usr/local/etc/devd/pppoe_toggle_ha.conf || true
 
 echo "Configuring service..."
