@@ -40,8 +40,8 @@ $config_file = '/usr/local/etc/pppoe_toggle_ha.conf';
 $default_config = [
     'vhid'            => 1,
     'ifkey'           => 'wan',
-    'nodeA'           => 'gateway1',
-    'nodeB'           => 'gateway2',
+    'nodeA'           => '',
+    'nodeB'           => '',
     'ssh_key'         => '/root/.ssh/secret.ssh',
     'cooldown_time'   => 10,
     'ip_timeout'      => 30,
@@ -410,11 +410,17 @@ function apply_carp_state($state): void
 function peer_cmd(string $cmd): bool
 {
     global $ssh_key, $nodeA, $nodeB;
-    $self = strtolower(php_uname('n'));
+    
+    $xml = simplexml_load_file("/conf/config.xml");
+    if ($xml === false) {
+        return false;
+    }
+    $iface = (string)$xml->hasync->pfsyncinterface;
+    $self = get_interface_ip($iface);
     $peer = '';
-    if (strpos($self, $nodeA) !== false) {
+    if ($self === $nodeA) {
         $peer = $nodeB;
-    } elseif (strpos($self, $nodeB) !== false) {
+    } elseif ($self === $nodeB) {
         $peer = $nodeA;
     }
     if ($peer === '') {
