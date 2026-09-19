@@ -119,6 +119,67 @@ else
     echo "WARNING: could not detect node IPs, using defaults"
 fi
 
+SSH_KEY="/root/.ssh/pppoe_toggle_ha.ssh"
+AUTHORIZED_KEYS="/root/.ssh/authorized_keys"
+
+mkdir -p /root/.ssh
+chmod 700 /root/.ssh
+
+if [ ! -f "$SSH_KEY" ]; then
+    echo "Generating shared SSH key: $SSH_KEY"
+    if ! ssh-keygen -t ed25519 -f "$SSH_KEY" -N "" -C "pppoe_toggle_ha" >/dev/null; then
+        echo "ERROR: failed to generate SSH key"
+        exit 1
+    fi
+fi
+
+chmod 600 "$SSH_KEY"
+
+touch "$AUTHORIZED_KEYS"
+chmod 600 "$AUTHORIZED_KEYS"
+
+PUB=$(ssh-keygen -y -f "$SSH_KEY") || {
+    echo "ERROR: failed to extract public key"
+    exit 1
+}
+
+if ! grep -qF "$PUB" "$AUTHORIZED_KEYS" 2>/dev/null; then
+    printf '%s\n' "$PUB" >> "$AUTHORIZED_KEYS"
+fi
+
+if [ -n "$PEER_SYNC_IP" ]; then
+    echo ""
+    echo "====================================================="
+    echo "  SHARED SSH KEY"
+    echo "====================================================="
+    echo ""
+    echo "Copy the private key to PEER:"
+    echo ""
+    echo "  cat $SSH_KEY | ssh root@$PEER_SYNC_IP 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && cat > $SSH_KEY && chmod 600 $SSH_KEY'"
+    echo ""
+    echo "Then run the installer on PEER."
+    echo ""
+    echo "Test from this node:"
+    echo ""
+    echo "  ssh -i $SSH_KEY root@$PEER_SYNC_IP hostname"
+    echo "====================================================="
+    echo ""
+fi
+
+awk -v k="$SSH_KEY" '
+  /^[[:space:]]*ssh_key[[:space:]]*=/ {
+      print "ssh_key = " k
+      found = 1
+      next
+  }
+  { print }
+  END {
+      if (!found) {
+          print "ssh_key = " k
+      }
+  }
+' pppoe_toggle_ha.conf.etc > pppoe_toggle_ha.conf.etc.new && mv pppoe_toggle_ha.conf.etc.new pppoe_toggle_ha.conf.etc
+
 echo ""
 echo "Installing files..."
 mkdir -p /usr/local/etc/devd
