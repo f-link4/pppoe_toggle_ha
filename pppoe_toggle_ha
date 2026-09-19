@@ -42,7 +42,7 @@ $default_config = [
     'ifkey'           => 'wan',
     'nodeA'           => '',
     'nodeB'           => '',
-    'ssh_key'         => '/root/.ssh/secret.ssh',
+    'ssh_key'         => '/root/.ssh/pppoe_toggle_ha.ssh',
     'cooldown_time'   => 10,
     'ip_timeout'      => 30,
     'conn_timeout'    => 300,
@@ -429,7 +429,7 @@ function peer_cmd(string $cmd): bool
     }
     $out = [];
     exec(
-        "ssh -i " . escapeshellarg($ssh_key)
+        "ssh -T -i " . escapeshellarg($ssh_key)
         . " -o StrictHostKeyChecking=accept-new"
         . " -o ConnectTimeout=10 "
         . escapeshellarg("root@{$peer}")
