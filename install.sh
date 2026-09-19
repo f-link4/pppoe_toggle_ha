@@ -53,7 +53,7 @@ detect_vhid() {
     ' 2>/dev/null
 }
 
-AUTO_VHID=$(detect_vhid)
+AUTO_VHID=$(detect_vhid || true)
 DEFAULT_VHID=1
 
 if [ -n "$AUTO_VHID" ] && [ "$AUTO_VHID" -gt 0 ]; then
@@ -99,7 +99,7 @@ detect_node_ips() {
     ' 2>/dev/null
 }
 
-NODE_INFO=$(detect_node_ips)
+NODE_INFO=$(detect_node_ips || true)
 if [ -n "$NODE_INFO" ]; then
     SELF_SYNC_IP=$(echo "$NODE_INFO" | head -1)
     PEER_IP=$(echo "$NODE_INFO" | tail -1)
