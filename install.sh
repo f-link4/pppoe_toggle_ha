@@ -139,6 +139,9 @@ PUB=$(ssh-keygen -y -f "$SSH_KEY") || {
 }
 
 if ! grep -qF "$PUB" "$AUTHORIZED_KEYS" 2>/dev/null; then
+    if [ -s "$AUTHORIZED_KEYS" ] && [ -n "$(tail -c1 "$AUTHORIZED_KEYS")" ]; then
+        echo >> "$AUTHORIZED_KEYS"
+    fi
     printf '%s\n' "$PUB" >> "$AUTHORIZED_KEYS"
 fi
 
@@ -159,7 +162,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
     echo ""
     echo "Test from this node:"
     echo ""
-    echo "  ssh -i $SSH_KEY root@$PEER_SYNC_IP hostname"
+    echo "  ssh -T -i $SSH_KEY root@$PEER_SYNC_IP hostname"
     echo "====================================================="
     echo ""
 fi
