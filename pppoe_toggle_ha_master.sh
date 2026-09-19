@@ -4,7 +4,9 @@
 # Add any custom actions here
 
 /sbin/pfctl -k ip_pbx
-ssh -i /root/.ssh/secret.ssh root@pbx -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "ip -6 addr flush dev enp1s0 dynamic && ifdown enp1s0 --force && ifup enp1s0"
+/sbin/pfctl -k ip_nets_voip
+#ssh -i /root/.ssh/secret.ssh root@pbx -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "ip -6 addr flush dev enp1s0 dynamic && ifdown enp1s0 --force && ifup enp1s0"
+ssh -i /root/.ssh/secret.ssh root@pbx -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "asterisk -rx 'pjsip send register *'"
 cmd=/usr/local/scr/update_tailscale_alias; [ -x "$cmd" ] && "$cmd"
 
 exit 0
