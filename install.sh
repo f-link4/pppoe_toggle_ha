@@ -121,12 +121,15 @@ AUTHORIZED_KEYS="/root/.ssh/authorized_keys"
 mkdir -p /root/.ssh
 chmod 700 /root/.ssh
 
+SSH_KEY_NEW=0
 if [ ! -f "$SSH_KEY" ]; then
     echo "Generating shared SSH key: $SSH_KEY"
     if ! ssh-keygen -t ed25519 -f "$SSH_KEY" -N "" -C "pppoe_toggle_ha" >/dev/null; then
         echo "ERROR: failed to generate SSH key"
         exit 1
     fi
+    rm -f "${SSH_KEY}.pub"
+    SSH_KEY_NEW=1
 fi
 
 chmod 600 "$SSH_KEY"
@@ -150,19 +153,25 @@ if [ -n "$PEER_SYNC_IP" ]; then
     echo "====================================================="
     echo "  SHARED SSH KEY"
     echo "====================================================="
-    echo ""
-    echo "1. Run the command on this node to copy private ssh key to the peer:"
-    echo ""
-    printf '  cat %s | ssh -o StrictHostKeyChecking=accept-new \\\n' "$SSH_KEY"
-    printf "    root@%s 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && \\\\\n" "$PEER_SYNC_IP"
-    printf "    cat > %s && \\\\\n" "$SSH_KEY"
-    printf "    chmod 600 %s'\n" "$SSH_KEY"
-    echo ""
-    echo "2. Then run installer on the peer:"
-    echo ""
-    echo "  fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/dev/install.sh | sh"
-    echo ""
-    echo "3. Test from this node (expected peer hostname w/o password prompt):"
+    if [ "$SSH_KEY_NEW" = "1" ]; then
+        echo ""
+        echo "Run the command on this node to copy private ssh key to the peer:"
+        echo ""
+        printf '  cat %s | ssh -o StrictHostKeyChecking=accept-new \\\n' "$SSH_KEY"
+        printf "    root@%s 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && \\\\\n" "$PEER_SYNC_IP"
+        printf "    cat > %s && \\\\\n" "$SSH_KEY"
+        printf "    chmod 600 %s'\n" "$SSH_KEY"
+        echo ""
+        echo "Then run installer on the peer:"
+        echo ""
+        echo "  fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/dev/install.sh | sh"
+        echo ""
+    else
+        echo ""
+        echo "Key found: $SSH_KEY"
+        echo ""
+    fi
+    echo "Test from this node (expected peer hostname w/o password prompt):"
     echo ""
     echo "  ssh -T -i $SSH_KEY root@$PEER_SYNC_IP hostname"
     echo "====================================================="
