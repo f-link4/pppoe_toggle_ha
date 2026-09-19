@@ -86,15 +86,12 @@ detect_node_ips() {
         if ($xml === false) {
             exit(1);
         }
-        
         $iface = (string)$xml->hasync->pfsyncinterface;
         if ($iface === "") {
             exit(1);
         }
-        
         $self = (string)$xml->interfaces->$iface->ipaddr;
         $peer = (string)$xml->hasync->pfsyncpeerip;
-        
         echo $self . "\n" . $peer;
     ' 2>/dev/null
 }
@@ -103,7 +100,6 @@ NODE_INFO=$(detect_node_ips || true)
 if [ -n "$NODE_INFO" ]; then
     SELF_SYNC_IP=$(echo "$NODE_INFO" | head -1)
     PEER_SYNC_IP=$(echo "$NODE_INFO" | tail -1)
-    
     if [ -n "$SELF_SYNC_IP" ] && [ -n "$PEER_SYNC_IP" ]; then
         echo "Detected self sync IP: ${SELF_SYNC_IP}"
         echo "Detected peer sync IP: ${PEER_SYNC_IP}"
@@ -134,7 +130,6 @@ if [ ! -f "$SSH_KEY" ]; then
 fi
 
 chmod 600 "$SSH_KEY"
-
 touch "$AUTHORIZED_KEYS"
 chmod 600 "$AUTHORIZED_KEYS"
 
