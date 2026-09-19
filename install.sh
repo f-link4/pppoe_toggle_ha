@@ -78,15 +78,58 @@ awk -v v="$USER_VHID" '
 ' pppoe_toggle_ha.conf.etc > pppoe_toggle_ha.conf.etc.new && mv pppoe_toggle_ha.conf.etc.new pppoe_toggle_ha.conf.etc
 
 echo ""
+echo "Detecting node IPs..."
+
+detect_node_ips() {
+    php -r '
+        $xml = simplexml_load_file("/conf/config.xml");
+        if ($xml === false) {
+            exit(1);
+        }
+        
+        $iface = (string)$xml->hasync->pfsyncinterface;
+        if ($iface === "") {
+            exit(1);
+        }
+        
+        $self = (string)$xml->interfaces->$iface->ipaddr;
+        $peer = (string)$xml->hasync->pfsyncpeerip;
+        
+        echo $self . "\n" . $peer;
+    ' 2>/dev/null
+}
+
+NODE_INFO=$(detect_node_ips)
+if [ -n "$NODE_INFO" ]; then
+    SELF_SYNC_IP=$(echo "$NODE_INFO" | head -1)
+    PEER_IP=$(echo "$NODE_INFO" | tail -1)
+    
+    if [ -n "$SELF_SYNC_IP" ] && [ -n "$PEER_IP" ]; then
+        echo "Detected self sync IP: ${SELF_SYNC_IP}"
+        echo "Detected peer IP:      ${PEER_IP}"
+        awk -v a="$SELF_SYNC_IP" -v b="$PEER_IP" '
+          /^nodeA[[:space:]]*=/ { print "nodeA = " a; next }
+          /^nodeB[[:space:]]*=/ { print "nodeB = " b; next }
+          { print }
+        ' pppoe_toggle_ha.conf.etc > pppoe_toggle_ha.conf.etc.new && mv pppoe_toggle_ha.conf.etc.new pppoe_toggle_ha.conf.etc
+    else
+        echo "WARNING: could not detect node IPs, using defaults"
+    fi
+else
+    echo "WARNING: could not detect node IPs, using defaults"
+fi
+
+echo ""
 echo "Installing files..."
 mkdir -p /usr/local/etc/devd
 install -m 0755 -v pppoe_toggle_ha /usr/local/sbin/ || exit 1
-install -m 0755 -v pppoe_toggle_ha_master.sh /usr/local/sbin/pppoe_toggle_ha_master.sh || true
-install -m 0755 -v pppoe_toggle_ha_backup.sh /usr/local/sbin/pppoe_toggle_ha_backup.sh || true
-install -m 0755 -v pppoe_toggle_ha.rc /usr/local/etc/rc.d/pppoe_toggle_ha || true
-install -m 0644 -v pppoe_toggle_ha.conf.etc /usr/local/etc/pppoe_toggle_ha.conf || true
-install -m 0644 -v pppoe_toggle_ha.conf /usr/local/etc/devd/pppoe_toggle_ha.conf || true
+install -m 0755 -v pppoe_toggle_ha_master.sh /usr/local/sbin/pppoe_toggle_ha_master.sh || exit 1
+install -m 0755 -v pppoe_toggle_ha_backup.sh /usr/local/sbin/pppoe_toggle_ha_backup.sh || exit 1
+install -m 0755 -v pppoe_toggle_ha.rc /usr/local/etc/rc.d/pppoe_toggle_ha || exit 1
+install -m 0644 -v pppoe_toggle_ha.conf.etc /usr/local/etc/pppoe_toggle_ha.conf || exit 1
+install -m 0644 -v pppoe_toggle_ha.conf /usr/local/etc/devd/pppoe_toggle_ha.conf || exit 1
 
+echo ""
 echo "Configuring service..."
 if command -v sysrc >/dev/null 2>&1; then
     sysrc -f /etc/rc.conf.local pppoe_toggle_ha_enable="YES" || true
