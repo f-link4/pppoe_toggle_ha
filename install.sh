@@ -240,7 +240,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
         echo "  Deploying to peer via XML-RPC"
         echo "======================================================================"
 
-        SSH_KEY_CONTENT=$(cat "$SSH_KEY")
+        SSH_KEY_B64=$(base64 < "$SSH_KEY")
         PUB=$(ssh-keygen -y -f "$SSH_KEY")
 
         php -r '
@@ -262,30 +262,30 @@ if [ -n "$PEER_SYNC_IP" ]; then
             require_once("config.inc");
             require_once("xmlrpc_client.inc");
 
-            $ssh_key_path    = $argv[1];
-            $ssh_key_content = $argv[2];
-            $pub_key         = $argv[3];
+            $ssh_key_path = $argv[1];
+            $ssh_key_b64  = $argv[2];
+            $pub_key      = $argv[3];
 
-$remote_php = "
-    \$debug = [];
+            $remote_php = "
+                \$debug = [];
+                \$debug[] = \"whoami=\" . trim(shell_exec(\"whoami\"));
 
-    \$debug[] = \"whoami=\" . trim(shell_exec(\"whoami\"));
+                @mkdir('/root/.ssh', 0700, true);
+                @chmod('/root/.ssh', 0700);
+                \$debug[] = \"ssh_dir=\" . (is_dir('/root/.ssh') ? 'OK' : 'FAIL');
 
-    @mkdir('/root/.ssh', 0700, true);
-    @chmod('/root/.ssh', 0700);
-    \$debug[] = \"ssh_dir=\" . (is_dir('/root/.ssh') ? 'OK' : 'FAIL');
+                \$key = base64_decode(" . var_export($ssh_key_b64, true) . ");
 
-    // Удалить старый ключ перед записью
-    if (file_exists(" . var_export($ssh_key_path, true) . ")) {
-        @unlink(" . var_export($ssh_key_path, true) . ");
-        \$debug[] = \"old_key_removed\";
-    }
+                if (file_exists(" . var_export($ssh_key_path, true) . ")) {
+                    @unlink(" . var_export($ssh_key_path, true) . ");
+                    \$debug[] = \"old_key_removed\";
+                }
 
-    \$bytes = @file_put_contents(" . var_export($ssh_key_path, true) . ", " . var_export($ssh_key_content, true) . ");
-    @chmod(" . var_export($ssh_key_path, true) . ", 0600);
-    \$debug[] = \"key_write=\" . \$bytes . \" bytes\";
-    \$debug[] = \"key_exists=\" . (file_exists(" . var_export($ssh_key_path, true) . ") ? 'YES' : 'NO');
-    \$debug[] = \"key_size=\" . (file_exists(" . var_export($ssh_key_path, true) . ") ? filesize(" . var_export($ssh_key_path, true) . ") : 0);
+                \$bytes = @file_put_contents(" . var_export($ssh_key_path, true) . ", \$key);
+                @chmod(" . var_export($ssh_key_path, true) . ", 0600);
+                \$debug[] = \"key_write=\" . \$bytes . \" bytes\";
+                \$debug[] = \"key_exists=\" . (file_exists(" . var_export($ssh_key_path, true) . ") ? 'YES' : 'NO');
+                \$debug[] = \"key_size=\" . (file_exists(" . var_export($ssh_key_path, true) . ") ? filesize(" . var_export($ssh_key_path, true) . ") : 0);
 
                 \$ak = '/root/.ssh/authorized_keys';
                 \$existing = @file_get_contents(\$ak);
@@ -318,7 +318,7 @@ $remote_php = "
                 exit(1);
             }
             echo "SSH key deployed to peer\n";
-        ' -- "$SSH_KEY" "$SSH_KEY_CONTENT" "$PUB"
+        ' -- "$SSH_KEY" "$SSH_KEY_B64" "$PUB"
 
         echo ""
         echo "Installing on peer via XML-RPC..."
@@ -365,3 +365,4 @@ $remote_php = "
         echo "======================================================================"
     fi
 fi
+
