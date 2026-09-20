@@ -269,7 +269,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
     if [ "$XMLRPC_RESULT" != "0" ]; then
         echo ""
         echo "======================================================================"
-        echo "  For HANDOVER, TAKEOVER and RELEASE functions"
+        echo " XMLRPC not configured, follow these steps:"
         echo "======================================================================"
         if [ "$SSH_KEY_NEW" = "1" ]; then
             echo ""
@@ -285,10 +285,6 @@ if [ -n "$PEER_SYNC_IP" ]; then
             echo ""
             echo "  ssh -T -i $SSH_KEY root@$PEER_SYNC_IP hostname"
             echo "======================================================================"
-        else
-            echo ""
-            echo "Key found: $SSH_KEY on $SELF_SYNC_IP"
-            echo ""
         fi
     fi
 fi
