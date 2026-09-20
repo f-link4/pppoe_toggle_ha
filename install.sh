@@ -254,27 +254,43 @@ if [ -n "$PEER_SYNC_IP" ]; then
         $pub_key         = $argv[3];
 
         $remote_php = "
+            \$debug = [];
+
+            // 0. whoami
+            \$debug[] = \"whoami=\" . trim(shell_exec(\"whoami\"));
+
             // 1. mkdir + chmod
             @mkdir('/root/.ssh', 0700, true);
             @chmod('/root/.ssh', 0700);
+            \$debug[] = \"ssh_dir=\" . (is_dir('/root/.ssh') ? 'OK' : 'FAIL');
 
             // 2. Записать приватный ключ
-            file_put_contents(" . var_export($ssh_key_path, true) . ", " . var_export($ssh_key_content, true) . ");
+            \$bytes = @file_put_contents(" . var_export($ssh_key_path, true) . ", " . var_export($ssh_key_content, true) . ");
             @chmod(" . var_export($ssh_key_path, true) . ", 0600);
+            \$debug[] = \"key_write=\" . \$bytes . \" bytes\";
+            \$debug[] = \"key_exists=\" . (file_exists(" . var_export($ssh_key_path, true) . ") ? 'YES' : 'NO');
+            \$debug[] = \"key_size=\" . (file_exists(" . var_export($ssh_key_path, true) . ") ? filesize(" . var_export($ssh_key_path, true) . ") : 0);
 
             // 3. Добавить публичный ключ в authorized_keys
             \$ak = '/root/.ssh/authorized_keys';
             \$existing = @file_get_contents(\$ak);
             if (\$existing === false) \$existing = '';
+            \$debug[] = \"ak_before=\" . strlen(\$existing) . \" bytes\";
+
             if (strpos(\$existing, " . var_export($pub_key, true) . ") === false) {
                 if (\$existing !== '' && substr(\$existing, -1) !== \"\\n\") {
                     \$existing .= \"\\n\";
                 }
                 \$existing .= " . var_export($pub_key . "\n", true) . ";
                 file_put_contents(\$ak, \$existing);
+                \$debug[] = \"ak_added=YES\";
+            } else {
+                \$debug[] = \"ak_added=NO (already present)\";
             }
             @chmod(\$ak, 0600);
+            \$debug[] = \"ak_after=\" . filesize(\$ak) . \" bytes\";
 
+            file_put_contents('/tmp/xmlrpc_debug', implode(\"\\n\", \$debug) . \"\\n\");
             return true;
         ";
 
@@ -327,6 +343,12 @@ if [ -n "$PEER_SYNC_IP" ]; then
     echo "Peer installer log:"
     ssh -T -i "$SSH_KEY" -o ConnectTimeout=5 \
         root@"$PEER_SYNC_IP" "cat /tmp/xmlrpc_install 2>/dev/null" 2>/dev/null
+
+    # Читаем debug-лог через SSH (если работает)
+    echo ""
+    echo "XML-RPC debug log:"
+    ssh -T -i "$SSH_KEY" -o ConnectTimeout=5 \
+        root@"$PEER_SYNC_IP" "cat /tmp/xmlrpc_debug 2>/dev/null" 2>/dev/null
 
     echo "======================================================================"
 fi
