@@ -28,7 +28,7 @@ if [ -f "$ARCHIVE" ]; then
     echo "Using pre-loaded archive: $TMPDIR/$ARCHIVE"
 else
     echo "Downloading PPPoE Toggle HA from GitHub..."
-    fetch -o "$ARCHIVE" "https://github.com/f-link4/pppoe_toggle_ha/archive/$ARCHIVE"
+    fetch -qo "$ARCHIVE" "https://github.com/f-link4/pppoe_toggle_ha/archive/$ARCHIVE"
     if [ $? -ne 0 ] || [ ! -s "$ARCHIVE" ]; then
         echo "Failed to download from GitHub"
         exit 1
