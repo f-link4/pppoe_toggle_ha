@@ -231,124 +231,52 @@ if [ -n "$PEER_SYNC_IP" ]; then
 
     # Отправляем на peer через XML-RPC
     php -r '
-        $xml = simplexml_load_file("/conf/config.xml");
-        if ($xml === false) {
-            fwrite(STDERR, "ERROR: cannot read config.xml\n");
-            exit(1);
-        }
+    $xml = simplexml_load_file("/conf/config.xml");
+    $peer     = (string)$xml->hasync->synchronizetoip;
+    $username = (string)$xml->hasync->username;
+    $password = (string)$xml->hasync->password;
 
-        $peer     = (string)$xml->hasync->synchronizetoip;
-        $username = (string)$xml->hasync->username;
-        $password = (string)$xml->hasync->password;
+    require_once("config.inc");
+    require_once("xmlrpc_client.inc");
 
-        if ($peer === "" || $password === "") {
-            fwrite(STDERR, "ERROR: HA sync not configured\n");
-            exit(1);
-        }
+    $ssh_key_path    = $argv[1];
+    $ssh_key_content = $argv[2];
+    $pub_key         = $argv[3];
 
-        require_once("config.inc");
-        require_once("xmlrpc_client.inc");
+    $remote_php = "
+        file_put_contents(\"/tmp/xmlrpc_debug\", \"STEP1: start\n\");
 
-        $ssh_key_path    = $argv[1];
-        $ssh_key_content = $argv[2];
-        $pub_key         = $argv[3];
+        @mkdir(\"/root/.ssh\", 0700, true);
+        @chmod(\"/root/.ssh\", 0700);
+        file_put_contents(\"/tmp/xmlrpc_debug\", \"STEP2: mkdir done\n\", FILE_APPEND);
 
-        $remote_php = "
-            \$debug = [];
+        file_put_contents(\"$ssh_key_path\", \"$ssh_key_content\");
+        @chmod(\"$ssh_key_path\", 0600);
+        file_put_contents(\"/tmp/xmlrpc_debug\", \"STEP3: key written\n\", FILE_APPEND);
 
-            // 0. whoami
-            \$debug[] = \"whoami=\" . trim(shell_exec(\"whoami\"));
+        \$ak = \"/root/.ssh/authorized_keys\";
+        \$existing = @file_get_contents(\$ak);
+        if (\$existing === false) \$existing = \"\";
+        file_put_contents(\"/tmp/xmlrpc_debug\", \"STEP4: ak read, size=\" . strlen(\$existing) . \"\n\", FILE_APPEND);
 
-            // 1. mkdir + chmod
-            @mkdir('/root/.ssh', 0700, true);
-            @chmod('/root/.ssh', 0700);
-            \$debug[] = \"ssh_dir=\" . (is_dir('/root/.ssh') ? 'OK' : 'FAIL');
-
-            // 2. Записать приватный ключ
-            \$bytes = @file_put_contents(" . var_export($ssh_key_path, true) . ", " . var_export($ssh_key_content, true) . ");
-            @chmod(" . var_export($ssh_key_path, true) . ", 0600);
-            \$debug[] = \"key_write=\" . \$bytes . \" bytes\";
-            \$debug[] = \"key_exists=\" . (file_exists(" . var_export($ssh_key_path, true) . ") ? 'YES' : 'NO');
-            \$debug[] = \"key_size=\" . (file_exists(" . var_export($ssh_key_path, true) . ") ? filesize(" . var_export($ssh_key_path, true) . ") : 0);
-
-            // 3. Добавить публичный ключ в authorized_keys
-            \$ak = '/root/.ssh/authorized_keys';
-            \$existing = @file_get_contents(\$ak);
-            if (\$existing === false) \$existing = '';
-            \$debug[] = \"ak_before=\" . strlen(\$existing) . \" bytes\";
-
-            if (strpos(\$existing, " . var_export($pub_key, true) . ") === false) {
-                if (\$existing !== '' && substr(\$existing, -1) !== \"\\n\") {
-                    \$existing .= \"\\n\";
-                }
-                \$existing .= " . var_export($pub_key . "\n", true) . ";
-                file_put_contents(\$ak, \$existing);
-                \$debug[] = \"ak_added=YES\";
-            } else {
-                \$debug[] = \"ak_added=NO (already present)\";
+        if (strpos(\$existing, \"$pub_key\") === false) {
+            if (\$existing !== \"\" && substr(\$existing, -1) !== \"\\n\") {
+                \$existing .= \"\\n\";
             }
-            @chmod(\$ak, 0600);
-            \$debug[] = \"ak_after=\" . filesize(\$ak) . \" bytes\";
-
-            file_put_contents('/tmp/xmlrpc_debug', implode(\"\\n\", \$debug) . \"\\n\");
-            return true;
-        ";
-
-        $client = new pfsense_xmlrpc_client();
-        $client->setConnectionData($peer, 444, $username, $password);
-
-        $response = $client->xmlrpc_exec_php($remote_php);
-        if ($response === false) {
-            fwrite(STDERR, "XML-RPC call FAILED\n");
-            exit(1);
+            \$existing .= \"$pub_key\\n\";
+            file_put_contents(\$ak, \$existing);
+            file_put_contents(\"/tmp/xmlrpc_debug\", \"STEP5: key added\n\", FILE_APPEND);
+        } else {
+            file_put_contents(\"/tmp/xmlrpc_debug\", \"STEP5: key already present\n\", FILE_APPEND);
         }
-        echo "SSH key deployed to peer\n";
-    ' "$SSH_KEY" "$SSH_KEY_CONTENT" "$PUB"
+        @chmod(\$ak, 0600);
 
-    # Теперь запускаем installer на peer'е через XML-RPC
-    echo ""
-    echo "Installing on peer via XML-RPC..."
-    php -r '
-        $xml = simplexml_load_file("/conf/config.xml");
-        if ($xml === false) {
-            exit(1);
-        }
+        file_put_contents(\"/tmp/xmlrpc_debug\", \"STEP6: done\n\", FILE_APPEND);
+        return true;
+    ";
 
-        $peer     = (string)$xml->hasync->synchronizetoip;
-        $username = (string)$xml->hasync->username;
-        $password = (string)$xml->hasync->password;
-
-        require_once("config.inc");
-        require_once("xmlrpc_client.inc");
-
-        $cmd = "fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/dev/install.sh | sh 2>&1";
-        $remote_php = "
-            \$out = shell_exec(" . var_export($cmd, true) . ");
-            file_put_contents(\"/tmp/xmlrpc_install\", \$out);
-            return true;
-        ";
-
-        $client = new pfsense_xmlrpc_client();
-        $client->setConnectionData($peer, 444, $username, $password);
-
-        $response = $client->xmlrpc_exec_php($remote_php);
-        if ($response === false) {
-            exit(1);
-        }
-        echo "Installer started on peer\n";
-    '
-
-    # Читаем вывод через SSH (если работает)
-    echo ""
-    echo "Peer installer log:"
-    ssh -T -i "$SSH_KEY" -o ConnectTimeout=5 \
-        root@"$PEER_SYNC_IP" "cat /tmp/xmlrpc_install 2>/dev/null" 2>/dev/null
-
-    # Читаем debug-лог через SSH (если работает)
-    echo ""
-    echo "XML-RPC debug log:"
-    ssh -T -i "$SSH_KEY" -o ConnectTimeout=5 \
-        root@"$PEER_SYNC_IP" "cat /tmp/xmlrpc_debug 2>/dev/null" 2>/dev/null
-
-    echo "======================================================================"
-fi
+    $client = new pfsense_xmlrpc_client();
+    $client->setConnectionData($peer, 444, $username, $password);
+    $response = $client->xmlrpc_exec_php($remote_php);
+    var_dump($response);
+' "$SSH_KEY" "$SSH_KEY_CONTENT" "$PUB"
