@@ -148,36 +148,6 @@ if ! grep -qF "$PUB" "$AUTHORIZED_KEYS" 2>/dev/null; then
     printf '%s\n' "$PUB" >> "$AUTHORIZED_KEYS"
 fi
 
-if [ -n "$PEER_SYNC_IP" ]; then
-    echo ""
-    echo "====================================================="
-    echo "  SHARED SSH KEY"
-    echo "====================================================="
-    if [ "$SSH_KEY_NEW" = "1" ]; then
-        echo ""
-        echo "Run the command on this node to copy private ssh key to the peer:"
-        echo ""
-        printf '  cat %s | ssh -o StrictHostKeyChecking=accept-new \\\n' "$SSH_KEY"
-        printf "    root@%s 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && \\\\\n" "$PEER_SYNC_IP"
-        printf "    cat > %s && \\\\\n" "$SSH_KEY"
-        printf "    chmod 600 %s'\n" "$SSH_KEY"
-        echo ""
-        echo "Then run installer on the peer:"
-        echo ""
-        echo "  fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/dev/install.sh | sh"
-        echo ""
-    else
-        echo ""
-        echo "Key found: $SSH_KEY"
-        echo ""
-    fi
-    echo "Test from this node (expected peer hostname w/o password prompt):"
-    echo ""
-    echo "  ssh -T -i $SSH_KEY root@$PEER_SYNC_IP hostname"
-    echo "====================================================="
-    echo ""
-fi
-
 awk -v k="$SSH_KEY" '
   /^[[:space:]]*ssh_key[[:space:]]*=/ {
       print "ssh_key = " k
@@ -220,3 +190,33 @@ echo "====================================================="
 echo "  PPPoE Toggle HA installed successfully!"
 echo "    Usage: pppoe_toggle_ha help"
 echo "====================================================="
+
+if [ -n "$PEER_SYNC_IP" ]; then
+    echo ""
+    echo "====================================================="
+    echo "  For HANDOVER, TAKEOVER and RELEASE functions:"
+    echo "====================================================="
+    if [ "$SSH_KEY_NEW" = "1" ]; then
+        echo ""
+        echo "Run the command on this node to copy private ssh key to the peer:"
+        echo ""
+        printf '  cat %s | ssh -o StrictHostKeyChecking=accept-new \\\n' "$SSH_KEY"
+        printf "    root@%s 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && \\\\\n" "$PEER_SYNC_IP"
+        printf "    cat > %s && \\\\\n" "$SSH_KEY"
+        printf "    chmod 600 %s'\n" "$SSH_KEY"
+        echo ""
+        echo "Then run installer on the peer:"
+        echo ""
+        echo "  fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/dev/install.sh | sh"
+        echo ""
+    else
+        echo ""
+        echo "Key found: $SSH_KEY"
+        echo ""
+    fi
+    echo "Test from this node (expected peer hostname w/o password prompt):"
+    echo ""
+    echo "  ssh -T -i $SSH_KEY root@$PEER_SYNC_IP hostname"
+    echo "====================================================="
+    echo ""
+fi
