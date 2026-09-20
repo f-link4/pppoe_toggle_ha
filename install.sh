@@ -1,6 +1,7 @@
 #!/bin/sh
 set -e
 
+echo ""
 echo "====================================================="
 echo "  PPPoE Toggle HA — Installer"
 echo "  https://github.com/f-link4/pppoe_toggle_ha"
