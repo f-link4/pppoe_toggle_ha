@@ -220,8 +220,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
 fi
 
 if [ -n "$PEER_SYNC_IP" ]; then
-    # Проверяем, настроен ли HA sync на этой стороне
-    HAS_SYNC=$(php -r '
+    XMLRPC=$(php -r '
         $xml = simplexml_load_file("/conf/config.xml");
         if ($xml === false) { echo "NO"; exit; }
         $peer = (string)$xml->hasync->synchronizetoip;
@@ -229,7 +228,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
         echo ($peer !== "" && $pass !== "") ? "YES" : "NO";
     ' 2>/dev/null)
 
-    if [ "$HAS_SYNC" != "YES" ]; then
+    if [ "$XMLRPC" != "YES" ]; then
         echo ""
         echo "======================================================================"
         echo "  Peer deploy skipped: HA sync not configured on this node"
@@ -237,7 +236,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
     else
         echo ""
         echo "======================================================================"
-        echo "  Deploying to peer via XML-RPC"
+        echo "  Deploying SSH key to peer via XML-RPC"
         echo "======================================================================"
 
         SSH_KEY_B64=$(base64 < "$SSH_KEY")
@@ -246,17 +245,25 @@ if [ -n "$PEER_SYNC_IP" ]; then
         php -r '
             $xml = simplexml_load_file("/conf/config.xml");
             if ($xml === false) {
-                fwrite(STDERR, "ERROR: cannot read config.xml\n");
                 exit(1);
             }
 
             $peer     = (string)$xml->hasync->synchronizetoip;
             $username = (string)$xml->hasync->username;
             $password = (string)$xml->hasync->password;
+            $protocol = (string)$xml->system->webgui->protocol;
+            $port     = (int)$xml->system->webgui->port;
 
             if ($peer === "" || $password === "") {
-                fwrite(STDERR, "ERROR: HA sync not configured\n");
                 exit(1);
+            }
+
+            if ($protocol === '') {
+                $protocol = 'https';
+            }
+
+            if ($port <= 0) {
+                $port = 443;
             }
 
             require_once("config.inc");
@@ -267,102 +274,44 @@ if [ -n "$PEER_SYNC_IP" ]; then
             $pub_key      = $argv[3];
 
             $remote_php = "
-                \$debug = [];
-                \$debug[] = \"whoami=\" . trim(shell_exec(\"whoami\"));
-
                 @mkdir('/root/.ssh', 0700, true);
                 @chmod('/root/.ssh', 0700);
-                \$debug[] = \"ssh_dir=\" . (is_dir('/root/.ssh') ? 'OK' : 'FAIL');
 
                 \$key = base64_decode(" . var_export($ssh_key_b64, true) . ");
 
                 if (file_exists(" . var_export($ssh_key_path, true) . ")) {
                     @unlink(" . var_export($ssh_key_path, true) . ");
-                    \$debug[] = \"old_key_removed\";
                 }
 
-                \$bytes = @file_put_contents(" . var_export($ssh_key_path, true) . ", \$key);
+                file_put_contents(" . var_export($ssh_key_path, true) . ", \$key);
                 @chmod(" . var_export($ssh_key_path, true) . ", 0600);
-                \$debug[] = \"key_write=\" . \$bytes . \" bytes\";
-                \$debug[] = \"key_exists=\" . (file_exists(" . var_export($ssh_key_path, true) . ") ? 'YES' : 'NO');
-                \$debug[] = \"key_size=\" . (file_exists(" . var_export($ssh_key_path, true) . ") ? filesize(" . var_export($ssh_key_path, true) . ") : 0);
 
                 \$ak = '/root/.ssh/authorized_keys';
                 \$existing = @file_get_contents(\$ak);
                 if (\$existing === false) \$existing = '';
-                \$debug[] = \"ak_before=\" . strlen(\$existing) . \" bytes\";
-
                 if (strpos(\$existing, " . var_export($pub_key, true) . ") === false) {
                     if (\$existing !== '' && substr(\$existing, -1) !== \"\\n\") {
                         \$existing .= \"\\n\";
                     }
                     \$existing .= " . var_export($pub_key . "\n", true) . ";
                     file_put_contents(\$ak, \$existing);
-                    \$debug[] = \"ak_added=YES\";
-                } else {
-                    \$debug[] = \"ak_added=NO (already present)\";
                 }
                 @chmod(\$ak, 0600);
-                \$debug[] = \"ak_after=\" . filesize(\$ak) . \" bytes\";
 
-                file_put_contents('/tmp/xmlrpc_debug', implode(\"\\n\", \$debug) . \"\\n\");
                 return true;
             ";
 
             $client = new pfsense_xmlrpc_client();
-            $client->setConnectionData($peer, 444, $username, $password);
+            $client->setConnectionData($peer, $port, $username, $password, $protocol);
 
             $response = $client->xmlrpc_exec_php($remote_php);
+
             if ($response === false) {
-                fwrite(STDERR, "XML-RPC call FAILED\n");
                 exit(1);
             }
-            echo "SSH key deployed to peer\n";
+            echo "SSH key deployed to peer ($protocol://$peer:$port)\n";
         ' -- "$SSH_KEY" "$SSH_KEY_B64" "$PUB"
-
-        echo ""
-        echo "Installing on peer via XML-RPC..."
-        php -r '
-            $xml = simplexml_load_file("/conf/config.xml");
-            if ($xml === false) {
-                exit(1);
-            }
-
-            $peer     = (string)$xml->hasync->synchronizetoip;
-            $username = (string)$xml->hasync->username;
-            $password = (string)$xml->hasync->password;
-
-            require_once("config.inc");
-            require_once("xmlrpc_client.inc");
-
-            $cmd = "fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/dev/install.sh | sh 2>&1";
-            $remote_php = "
-                \$out = shell_exec(" . var_export($cmd, true) . ");
-                file_put_contents(\"/tmp/xmlrpc_install\", \$out);
-                return true;
-            ";
-
-            $client = new pfsense_xmlrpc_client();
-            $client->setConnectionData($peer, 444, $username, $password);
-
-            $response = $client->xmlrpc_exec_php($remote_php);
-            if ($response === false) {
-                exit(1);
-            }
-            echo "Installer started on peer\n";
-        '
-
-        echo ""
-        echo "Peer installer log:"
-        ssh -T -i "$SSH_KEY" -o ConnectTimeout=5 \
-            root@"$PEER_SYNC_IP" "cat /tmp/xmlrpc_install 2>/dev/null" 2>/dev/null
-
-        echo ""
-        echo "XML-RPC debug log:"
-        ssh -T -i "$SSH_KEY" -o ConnectTimeout=5 \
-            root@"$PEER_SYNC_IP" "cat /tmp/xmlrpc_debug 2>/dev/null" 2>/dev/null
 
         echo "======================================================================"
     fi
 fi
-
