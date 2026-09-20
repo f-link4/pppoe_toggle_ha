@@ -240,29 +240,6 @@ if [ -n "$PEER_SYNC_IP" ]; then
         echo "======================================================================"
 
         SSH_KEY_B64=$(base64 < "$SSH_KEY")
-        PUB=$(ssh-keygen -y -f "$SSH_KEY")
-
-if [ -n "$PEER_SYNC_IP" ]; then
-    XMLRPC=$(php -r '
-        $xml = simplexml_load_file("/conf/config.xml");
-        if ($xml === false) { echo "NO"; exit; }
-        $peer = (string)$xml->hasync->synchronizetoip;
-        $pass = (string)$xml->hasync->password;
-        echo ($peer !== "" && $pass !== "") ? "YES" : "NO";
-    ' 2>/dev/null)
-
-    if [ "$XMLRPC" != "YES" ]; then
-        echo ""
-        echo "======================================================================"
-        echo "  Peer deploy skipped: HA sync not configured on this node"
-        echo "======================================================================"
-    else
-        echo ""
-        echo "======================================================================"
-        echo "  Deploying SSH key to peer via XML-RPC"
-        echo "======================================================================"
-
-        SSH_KEY_B64=$(base64 < "$SSH_KEY")
 
         php -r '
             $xml = simplexml_load_file("/conf/config.xml");
