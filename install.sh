@@ -194,32 +194,6 @@ echo "    Usage: pppoe_toggle_ha help"
 echo "====================================================="
 
 if [ -n "$PEER_SYNC_IP" ]; then
-    echo ""
-    echo "======================================================================"
-    echo "  For HANDOVER, TAKEOVER and RELEASE functions"
-    echo "======================================================================"
-    if [ "$SSH_KEY_NEW" = "1" ]; then
-        echo ""
-        echo "Run the command on this node to deploy to the peer:"
-        echo ""
-        printf '  cat %s | ssh -o StrictHostKeyChecking=accept-new \\\n' "$SSH_KEY"
-        printf "    root@%s 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && \\\\\n" "$PEER_SYNC_IP"
-        printf "    cat > %s && \\\\\n" "$SSH_KEY"
-        printf "    chmod 600 %s && \\\\\n" "$SSH_KEY"
-        printf "    fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/dev/install.sh | sh'\n"
-        echo ""
-        echo "Verify from this node (expected peer hostname w/o password prompt):"
-        echo ""
-        echo "  ssh -T -i $SSH_KEY root@$PEER_SYNC_IP hostname"
-        echo "======================================================================"
-    else
-        echo ""
-        echo "Key found: $SSH_KEY on $SELF_SYNC_IP"
-        echo ""
-    fi
-fi
-
-if [ -n "$PEER_SYNC_IP" ]; then
     XMLRPC=$(php -r '
         $xml = simplexml_load_file("/conf/config.xml");
         if ($xml === false) { echo "NO"; exit; }
@@ -228,15 +202,12 @@ if [ -n "$PEER_SYNC_IP" ]; then
         echo ($peer !== "" && $pass !== "") ? "YES" : "NO";
     ' 2>/dev/null)
 
-    if [ "$XMLRPC" != "YES" ]; then
+    XMLRPC_RESULT=0
+
+    if [ "$XMLRPC" = "YES" ]; then
         echo ""
         echo "======================================================================"
-        echo "  Peer deploy skipped: HA sync not configured on this node"
-        echo "======================================================================"
-    else
-        echo ""
-        echo "======================================================================"
-        echo "  Deploying SSH key and installing on peer via XML-RPC"
+        echo "  Deploying to the peer via XMLRPC"
         echo "======================================================================"
 
         SSH_KEY_B64=$(base64 < "$SSH_KEY")
@@ -263,7 +234,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
 
                 \$cmd = \"fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/dev/install.sh | sh 2>&1\";
                 \$out = shell_exec(\$cmd);
-                file_put_contents(\"/tmp/xmlrpc_install\", \$out);
+                file_put_contents(\"/tmp/pppoe_toggle_ha_install\", \$out);
 
                 return true;
             ";
@@ -274,11 +245,41 @@ if [ -n "$PEER_SYNC_IP" ]; then
             $response = $client->xmlrpc_exec_php($remote_php);
 
             if ($response === false) {
-                exit(1);
+                exit(2);
             }
             echo "Peer deployed ($protocol://$peer:$port)\n";
         ' -- "$SSH_KEY" "$SSH_KEY_B64"
 
+        XMLRPC_RESULT=$?
         echo "======================================================================"
+    else
+        XMLRPC_RESULT=2
+    fi
+
+    # Fallback: если XML-RPC не сработал
+    if [ "$XMLRPC_RESULT" != "0" ]; then
+        echo ""
+        echo "======================================================================"
+        echo "  For HANDOVER, TAKEOVER and RELEASE functions"
+        echo "======================================================================"
+        if [ "$SSH_KEY_NEW" = "1" ]; then
+            echo ""
+            echo "Run the command on this node to deploy to the peer:"
+            echo ""
+            printf '  cat %s | ssh -o StrictHostKeyChecking=accept-new \\\n' "$SSH_KEY"
+            printf "    root@%s 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && \\\\\n" "$PEER_SYNC_IP"
+            printf "    cat > %s && \\\\\n" "$SSH_KEY"
+            printf "    chmod 600 %s && \\\\\n" "$SSH_KEY"
+            printf "    fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/dev/install.sh | sh'\n"
+            echo ""
+            echo "Verify from this node (expected peer hostname w/o password prompt):"
+            echo ""
+            echo "  ssh -T -i $SSH_KEY root@$PEER_SYNC_IP hostname"
+            echo "======================================================================"
+        else
+            echo ""
+            echo "Key found: $SSH_KEY on $SELF_SYNC_IP"
+            echo ""
+        fi
     fi
 fi
