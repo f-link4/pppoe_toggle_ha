@@ -12,7 +12,7 @@ fi
 
 BRANCH="${1:-dev}"
 
-if [ -n "$SSH_CONNECTION" ]; then
+if [ -f /tmp/pt_ssh_uninstall.sh ]; then
     MODE="peer"
 else
     MODE="self"
@@ -45,7 +45,7 @@ if [ "$MODE" = "self" ] && [ -n "$PEER_SYNC_IP" ]; then
 
     if curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/uninstall.sh \
       | ssh -T -i /root/.ssh/pppoe_toggle_ha.ssh -o ConnectTimeout=10 root@"$PEER_SYNC_IP" \
-            "cat > /tmp/pt_uninstall.sh && sh /tmp/pt_uninstall.sh && rm -f /tmp/pt_uninstall.sh"; then
+            "cat > /tmp/pt_ssh_uninstall.sh && sh /tmp/pt_ssh_uninstall.sh && rm -f /tmp/pt_ssh_uninstall.sh"; then
         echo "  Successfully removed from peer ($PEER_SYNC_IP)"
     else
         echo "  FAILED to remove from peer"
