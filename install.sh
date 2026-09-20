@@ -266,20 +266,26 @@ if [ -n "$PEER_SYNC_IP" ]; then
             $ssh_key_content = $argv[2];
             $pub_key         = $argv[3];
 
-            $remote_php = "
-                \$debug = [];
+$remote_php = "
+    \$debug = [];
 
-                \$debug[] = \"whoami=\" . trim(shell_exec(\"whoami\"));
+    \$debug[] = \"whoami=\" . trim(shell_exec(\"whoami\"));
 
-                @mkdir('/root/.ssh', 0700, true);
-                @chmod('/root/.ssh', 0700);
-                \$debug[] = \"ssh_dir=\" . (is_dir('/root/.ssh') ? 'OK' : 'FAIL');
+    @mkdir('/root/.ssh', 0700, true);
+    @chmod('/root/.ssh', 0700);
+    \$debug[] = \"ssh_dir=\" . (is_dir('/root/.ssh') ? 'OK' : 'FAIL');
 
-                \$bytes = @file_put_contents(" . var_export($ssh_key_path, true) . ", " . var_export($ssh_key_content, true) . ");
-                @chmod(" . var_export($ssh_key_path, true) . ", 0600);
-                \$debug[] = \"key_write=\" . \$bytes . \" bytes\";
-                \$debug[] = \"key_exists=\" . (file_exists(" . var_export($ssh_key_path, true) . ") ? 'YES' : 'NO');
-                \$debug[] = \"key_size=\" . (file_exists(" . var_export($ssh_key_path, true) . ") ? filesize(" . var_export($ssh_key_path, true) . ") : 0);
+    // Удалить старый ключ перед записью
+    if (file_exists(" . var_export($ssh_key_path, true) . ")) {
+        @unlink(" . var_export($ssh_key_path, true) . ");
+        \$debug[] = \"old_key_removed\";
+    }
+
+    \$bytes = @file_put_contents(" . var_export($ssh_key_path, true) . ", " . var_export($ssh_key_content, true) . ");
+    @chmod(" . var_export($ssh_key_path, true) . ", 0600);
+    \$debug[] = \"key_write=\" . \$bytes . \" bytes\";
+    \$debug[] = \"key_exists=\" . (file_exists(" . var_export($ssh_key_path, true) . ") ? 'YES' : 'NO');
+    \$debug[] = \"key_size=\" . (file_exists(" . var_export($ssh_key_path, true) . ") ? filesize(" . var_export($ssh_key_path, true) . ") : 0);
 
                 \$ak = '/root/.ssh/authorized_keys';
                 \$existing = @file_get_contents(\$ak);
