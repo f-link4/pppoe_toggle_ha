@@ -240,7 +240,6 @@ if [ -n "$PEER_SYNC_IP" ]; then
         echo "======================================================================"
 
         SSH_KEY_B64=$(base64 < "$SSH_KEY")
-        PUB=$(ssh-keygen -y -f "$SSH_KEY")
 
         php -r '
             $xml = simplexml_load_file("/conf/config.xml");
@@ -255,26 +254,12 @@ if [ -n "$PEER_SYNC_IP" ]; then
 
             $ssh_key_path = $argv[1];
             $ssh_key_b64  = $argv[2];
-            $pub_key      = $argv[3];
 
             $remote_php = "
                 @mkdir(\"/root/.ssh\", 0700, true);
                 @chmod(\"/root/.ssh\", 0700);
                 file_put_contents(" . var_export($ssh_key_path, true) . ", base64_decode(" . var_export($ssh_key_b64, true) . "));
                 @chmod(" . var_export($ssh_key_path, true) . ", 0600);
-
-                \$ak = \"/root/.ssh/authorized_keys\";
-                \$ex = @file_get_contents(\$ak);
-                if (\$ex === false) \$ex = \"\";
-                if (strpos(\$ex, " . var_export($pub_key, true) . ") === false) {
-                    if (\$ex !== \"\" && substr(\$ex, -1) !== \"\\n\") {
-                        \$ex .= \"\\n\";
-                    }
-                    \$ex .= " . var_export($pub_key . "\n", true) . ";
-                    file_put_contents(\$ak, \$ex);
-                }
-                @chmod(\$ak, 0600);
-
                 return true;
             ";
 
@@ -287,9 +272,8 @@ if [ -n "$PEER_SYNC_IP" ]; then
                 exit(1);
             }
             echo "SSH key deployed ($protocol://$peer:$port)\n";
-        ' -- "$SSH_KEY" "$SSH_KEY_B64" "$PUB"
+        ' -- "$SSH_KEY" "$SSH_KEY_B64"
 
         echo "======================================================================"
     fi
 fi
-
