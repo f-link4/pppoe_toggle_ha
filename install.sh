@@ -233,7 +233,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
             $ssh_key_path = $argv[1];
             $ssh_key_b64  = $argv[2];
             $archive_b64  = $argv[3];
-            $branch       = $argv[4] ?? "dev";
+            $branch       = $argv[4];
 
             $archive_name = $branch . ".tar.gz";
             $extract_dir  = "pppoe_toggle_ha-" . $branch;
