@@ -236,7 +236,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
     else
         echo ""
         echo "======================================================================"
-        echo "  Deploying SSH key to peer via XML-RPC"
+        echo "  Deploying SSH key and installing on peer via XML-RPC"
         echo "======================================================================"
 
         SSH_KEY_B64=$(base64 < "$SSH_KEY")
@@ -260,6 +260,11 @@ if [ -n "$PEER_SYNC_IP" ]; then
                 @chmod(\"/root/.ssh\", 0700);
                 file_put_contents(" . var_export($ssh_key_path, true) . ", base64_decode(" . var_export($ssh_key_b64, true) . "));
                 @chmod(" . var_export($ssh_key_path, true) . ", 0600);
+
+                \$cmd = \"fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/dev/install.sh | sh 2>&1\";
+                \$out = shell_exec(\$cmd);
+                file_put_contents(\"/tmp/xmlrpc_install\", \$out);
+
                 return true;
             ";
 
@@ -271,7 +276,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
             if ($response === false) {
                 exit(1);
             }
-            echo "SSH key deployed ($protocol://$peer:$port)\n";
+            echo "Peer deployed ($protocol://$peer:$port)\n";
         ' -- "$SSH_KEY" "$SSH_KEY_B64"
 
         echo "======================================================================"
