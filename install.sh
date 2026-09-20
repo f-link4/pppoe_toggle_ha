@@ -12,7 +12,7 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-TMPDIR=$(mktemp -d /tmp/pppoe_toggle_ha.XXXXXX)
+TMPDIR="/tmp/pppoe_toggle_ha"
 cleanup() {
     rm -rf "$TMPDIR"
 }
@@ -23,11 +23,15 @@ cd "$TMPDIR" || exit 1
 BRANCH="${1:-dev}"
 ARCHIVE="${BRANCH}.tar.gz"
 
-echo "Downloading PPPoE Toggle HA from GitHub..."
-fetch -o "$ARCHIVE" "https://github.com/f-link4/pppoe_toggle_ha/archive/$ARCHIVE"
-if [ $? -ne 0 ] || [ ! -s "$ARCHIVE" ]; then
-    echo "Failed to download from GitHub"
-    exit 1
+if [ -f "$ARCHIVE" ]; then
+    echo "Using pre-loaded archive: $TMPDIR/$ARCHIVE"
+else
+    echo "Downloading PPPoE Toggle HA from GitHub..."
+    fetch -o "$ARCHIVE" "https://github.com/f-link4/pppoe_toggle_ha/archive/$ARCHIVE"
+    if [ $? -ne 0 ] || [ ! -s "$ARCHIVE" ]; then
+        echo "Failed to download from GitHub"
+        exit 1
+    fi
 fi
 
 tar -xzf "$ARCHIVE"
