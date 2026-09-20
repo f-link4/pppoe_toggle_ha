@@ -217,6 +217,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
         echo "======================================================================"
 
         SSH_KEY_B64=$(base64 < "$SSH_KEY")
+        ARCHIVE_B64=$(base64 < "$TMPDIR/$ARCHIVE")
 
         php -r '
             $xml = simplexml_load_file("/conf/config.xml");
@@ -231,6 +232,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
 
             $ssh_key_path = $argv[1];
             $ssh_key_b64  = $argv[2];
+            $archive_b64  = $argv[3];
 
             $remote_php = "
                 @mkdir(\"/root/.ssh\", 0700, true);
@@ -238,8 +240,12 @@ if [ -n "$PEER_SYNC_IP" ]; then
                 file_put_contents(" . var_export($ssh_key_path, true) . ", base64_decode(" . var_export($ssh_key_b64, true) . "));
                 @chmod(" . var_export($ssh_key_path, true) . ", 0600);
 
-                \$cmd = \"fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/dev/install.sh | sh 2>&1\";
-                \$out = shell_exec(\$cmd);
+                @mkdir(\"/tmp/pppoe_toggle_ha\", 0755, true);
+                file_put_contents(\"/tmp/pppoe_toggle_ha/dev.tar.gz\", base64_decode(" . var_export($archive_b64, true) . "));
+
+                shell_exec(\"cd /tmp/pppoe_toggle_ha && tar -xzf dev.tar.gz\");
+
+                \$out = shell_exec(\"cd /tmp/pppoe_toggle_ha/pppoe_toggle_ha-dev && sh install.sh 2>&1\");
                 file_put_contents(\"/tmp/pppoe_toggle_ha_install\", \$out);
 
                 return true;
@@ -253,8 +259,8 @@ if [ -n "$PEER_SYNC_IP" ]; then
             if ($response === false) {
                 exit(2);
             }
-            echo "Peer deployed ($protocol://$peer:$port)\n";
-        ' -- "$SSH_KEY" "$SSH_KEY_B64"
+            echo "Peer deployed offline ($protocol://$peer:$port)\n";
+        ' -- "$SSH_KEY" "$SSH_KEY_B64" "$ARCHIVE_B64"
 
         XMLRPC_RESULT=$?
         echo "======================================================================"
