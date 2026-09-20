@@ -193,12 +193,6 @@ fi
 
 hash -r 2>/dev/null || rehash 2>/dev/null
 
-echo ""
-echo "====================================================="
-echo "  PPPoE Toggle HA installed successfully!"
-echo "    Usage: pppoe_toggle_ha help"
-echo "====================================================="
-
 if [ -n "$PEER_SYNC_IP" ]; then
     XMLRPC=$(php -r '
         $xml = simplexml_load_file("/conf/config.xml");
@@ -213,7 +207,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
     if [ "$XMLRPC" = "YES" ]; then
         echo ""
         echo "======================================================================"
-        echo "  Deploying to the peer via XMLRPC"
+        echo "  Deploying to the peer via XMLRPC..."
         echo "======================================================================"
 
         SSH_KEY_B64=$(base64 < "$SSH_KEY")
@@ -263,7 +257,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
             if ($response === false) {
                 exit(2);
             }
-            echo "Peer deployed offline ($protocol://$peer:$port)\n";
+            echo "    Successfully deployed to $protocol://$peer:$port\n";
         ' -- "$SSH_KEY" "$SSH_KEY_B64" "$ARCHIVE_B64" "$BRANCH"
 
         XMLRPC_RESULT=$?
@@ -272,7 +266,6 @@ if [ -n "$PEER_SYNC_IP" ]; then
         XMLRPC_RESULT=2
     fi
 
-    # Fallback: если XML-RPC не сработал
     if [ "$XMLRPC_RESULT" != "0" ]; then
         echo ""
         echo "======================================================================"
