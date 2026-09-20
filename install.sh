@@ -28,7 +28,7 @@ if [ -f "$ARCHIVE" ]; then
     echo "Using pre-loaded archive: $TMPDIR/$ARCHIVE"
 else
     echo "Downloading PPPoE Toggle HA from GitHub..."
-    fetch -o "$ARCHIVE" "https://github.com/f-link4/pppoe_toggle_ha/archive/$ARCHIVE" 2>/dev/null
+    curl -sL -o "$ARCHIVE" "https://github.com/f-link4/pppoe_toggle_ha/archive/$ARCHIVE"
     if [ $? -ne 0 ] || [ ! -s "$ARCHIVE" ]; then
         echo "Failed to download from GitHub"
         exit 1
@@ -286,7 +286,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
             printf "    root@%s 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && \\\\\n" "$PEER_SYNC_IP"
             printf "    cat > %s && \\\\\n" "$SSH_KEY"
             printf "    chmod 600 %s && \\\\\n" "$SSH_KEY"
-            printf "    fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/install.sh | sh'\n"
+            printf "    curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/install.sh | sh'\n"
             echo ""
             echo "Verify from this node (expected peer hostname w/o password prompt):"
             echo ""
