@@ -108,8 +108,8 @@ if [ -n "$NODE_INFO" ]; then
     SELF_SYNC_IP=$(echo "$NODE_INFO" | head -1)
     PEER_SYNC_IP=$(echo "$NODE_INFO" | tail -1)
     if [ -n "$SELF_SYNC_IP" ] && [ -n "$PEER_SYNC_IP" ]; then
-        echo "Detected self sync IP: ${SELF_SYNC_IP}"
-        echo "Detected peer sync IP: ${PEER_SYNC_IP}"
+        echo "Self sync IP: ${SELF_SYNC_IP}"
+        echo "Peer sync IP: ${PEER_SYNC_IP}"
         awk -v a="$SELF_SYNC_IP" -v b="$PEER_SYNC_IP" '
           /^nodeA[[:space:]]*=/ { print "nodeA = " a; next }
           /^nodeB[[:space:]]*=/ { print "nodeB = " b; next }
@@ -130,6 +130,7 @@ chmod 700 /root/.ssh
 
 SSH_KEY_NEW=0
 if [ ! -f "$SSH_KEY" ]; then
+    echo ""
     echo "Generating shared SSH key: $SSH_KEY"
     if ! ssh-keygen -t ed25519 -f "$SSH_KEY" -N "" -C "pppoe_toggle_ha" >/dev/null; then
         echo "ERROR: failed to generate SSH key"
@@ -257,7 +258,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
             if ($response === false) {
                 exit(2);
             }
-            echo "    Successfully deployed to $protocol://$peer:$port\n";
+            echo "  Successfully deployed to $protocol://$peer:$port\n";
         ' -- "$SSH_KEY" "$SSH_KEY_B64" "$ARCHIVE_B64" "$BRANCH"
 
         XMLRPC_RESULT=$?
