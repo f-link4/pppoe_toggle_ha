@@ -13,6 +13,7 @@ if [ "$(id -u)" != "0" ]; then
 fi
 
 TMPDIR="/tmp/pppoe_toggle_ha"
+mkdir -p "$TMPDIR"
 cleanup() {
     rm -rf "$TMPDIR"
 }
