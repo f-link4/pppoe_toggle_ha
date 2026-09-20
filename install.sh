@@ -56,6 +56,7 @@ detect_vhid() {
 AUTO_VHID=$(detect_vhid || true)
 DEFAULT_VHID=1
 
+echo ""
 if [ -n "$AUTO_VHID" ] && [ "$AUTO_VHID" -gt 0 ]; then
     USER_VHID="$AUTO_VHID"
     echo "Detected CARP VHID on LAN interface: ${USER_VHID}"
@@ -186,6 +187,7 @@ fi
 
 hash -r 2>/dev/null || rehash 2>/dev/null
 
+echo ""
 echo "====================================================="
 echo "  PPPoE Toggle HA installed successfully!"
 echo "    Usage: pppoe_toggle_ha help"
@@ -193,19 +195,19 @@ echo "====================================================="
 
 if [ -n "$PEER_SYNC_IP" ]; then
     echo ""
-    echo "====================================================="
+    echo "======================================================================"
     echo "  For HANDOVER, TAKEOVER and RELEASE functions:"
-    echo "====================================================="
+    echo "======================================================================"
     if [ "$SSH_KEY_NEW" = "1" ]; then
         echo ""
-        echo "Run the command on this node to copy private ssh key to the peer:"
+        echo "1. Run the command on this node to copy private ssh key to the peer:"
         echo ""
         printf '  cat %s | ssh -o StrictHostKeyChecking=accept-new \\\n' "$SSH_KEY"
         printf "    root@%s 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && \\\\\n" "$PEER_SYNC_IP"
         printf "    cat > %s && \\\\\n" "$SSH_KEY"
         printf "    chmod 600 %s'\n" "$SSH_KEY"
         echo ""
-        echo "Then run installer on the peer:"
+        echo "2. Install on the peer:"
         echo ""
         echo "  fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/dev/install.sh | sh"
         echo ""
@@ -214,9 +216,9 @@ if [ -n "$PEER_SYNC_IP" ]; then
         echo "Key found: $SSH_KEY"
         echo ""
     fi
-    echo "Test from this node (expected peer hostname w/o password prompt):"
+    echo "Verify from this node (expected peer hostname w/o password prompt):"
     echo ""
     echo "  ssh -T -i $SSH_KEY root@$PEER_SYNC_IP hostname"
-    echo "====================================================="
+    echo "======================================================================"
     echo ""
 fi
