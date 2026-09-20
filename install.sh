@@ -233,6 +233,10 @@ if [ -n "$PEER_SYNC_IP" ]; then
             $ssh_key_path = $argv[1];
             $ssh_key_b64  = $argv[2];
             $archive_b64  = $argv[3];
+            $branch       = $argv[4] ?? "dev";
+
+            $archive_name = $branch . ".tar.gz";
+            $extract_dir  = "pppoe_toggle_ha-" . $branch;
 
             $remote_php = "
                 @mkdir(\"/root/.ssh\", 0700, true);
@@ -241,11 +245,11 @@ if [ -n "$PEER_SYNC_IP" ]; then
                 @chmod(" . var_export($ssh_key_path, true) . ", 0600);
 
                 @mkdir(\"/tmp/pppoe_toggle_ha\", 0755, true);
-                file_put_contents(\"/tmp/pppoe_toggle_ha/dev.tar.gz\", base64_decode(" . var_export($archive_b64, true) . "));
+                file_put_contents(\"/tmp/pppoe_toggle_ha/" . $archive_name . "\", base64_decode(" . var_export($archive_b64, true) . "));
 
-                shell_exec(\"cd /tmp/pppoe_toggle_ha && tar -xzf dev.tar.gz\");
+                shell_exec(\"cd /tmp/pppoe_toggle_ha && tar -xzf " . $archive_name . "\");
 
-                \$out = shell_exec(\"cd /tmp/pppoe_toggle_ha/pppoe_toggle_ha-dev && sh install.sh 2>&1\");
+                \$out = shell_exec(\"cd /tmp/pppoe_toggle_ha/" . $extract_dir . " && sh install.sh 2>&1\");
                 file_put_contents(\"/tmp/pppoe_toggle_ha_install\", \$out);
 
                 return true;
@@ -260,7 +264,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
                 exit(2);
             }
             echo "Peer deployed offline ($protocol://$peer:$port)\n";
-        ' -- "$SSH_KEY" "$SSH_KEY_B64" "$ARCHIVE_B64"
+        ' -- "$SSH_KEY" "$SSH_KEY_B64" "$ARCHIVE_B64" "$BRANCH"
 
         XMLRPC_RESULT=$?
         echo "======================================================================"
@@ -282,7 +286,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
             printf "    root@%s 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && \\\\\n" "$PEER_SYNC_IP"
             printf "    cat > %s && \\\\\n" "$SSH_KEY"
             printf "    chmod 600 %s && \\\\\n" "$SSH_KEY"
-            printf "    fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/dev/install.sh | sh'\n"
+            printf "    fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/install.sh | sh'\n"
             echo ""
             echo "Verify from this node (expected peer hostname w/o password prompt):"
             echo ""
