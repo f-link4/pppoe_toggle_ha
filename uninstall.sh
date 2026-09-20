@@ -10,6 +10,64 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
+BRANCH="${1:-dev}"
+
+if [ -n "$SSH_CONNECTION" ]; then
+    MODE="peer"
+else
+    MODE="self"
+fi
+
+detect_node_ips() {
+    php -r '
+        $xml = simplexml_load_file("/conf/config.xml");
+        if ($xml === false) { exit(1); }
+        $iface = (string)$xml->hasync->pfsyncinterface;
+        if ($iface === "") { exit(1); }
+        $self = (string)$xml->interfaces->$iface->ipaddr;
+        $peer = (string)$xml->hasync->pfsyncpeerip;
+        echo $self . "\n" . $peer;
+    ' 2>/dev/null
+}
+
+NODE_INFO=$(detect_node_ips || true)
+if [ -n "$NODE_INFO" ]; then
+    SELF_SYNC_IP=$(echo "$NODE_INFO" | head -1)
+    PEER_SYNC_IP=$(echo "$NODE_INFO" | tail -1)
+fi
+
+SSH_RESULT=0
+if [ "$MODE" = "self" ] && [ -n "$PEER_SYNC_IP" ]; then
+    echo ""
+    echo "======================================================================"
+    echo "  Removing from the peer via SSH..."
+    echo "======================================================================"
+
+    if curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/uninstall.sh \
+      | ssh -T -i /root/.ssh/pppoe_toggle_ha.ssh -o ConnectTimeout=10 root@"$PEER_SYNC_IP" \
+            "cat > /tmp/pt_uninstall.sh && sh /tmp/pt_uninstall.sh && rm -f /tmp/pt_uninstall.sh"; then
+        echo "  Successfully removed from peer ($PEER_SYNC_IP)"
+    else
+        echo "  FAILED to remove from peer"
+        SSH_RESULT=1
+    fi
+    echo "======================================================================"
+else
+    SSH_RESULT=1
+fi
+
+if [ "$SSH_RESULT" != "0" ] && [ "$MODE" = "self" ] && [ -n "$PEER_SYNC_IP" ]; then
+    echo ""
+    echo "======================================================================"
+    echo " SSH to peer failed, remove manually on peer:"
+    echo "======================================================================"
+    echo ""
+    echo "  Run on peer ($PEER_SYNC_IP):"
+    echo ""
+    echo "    curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/uninstall.sh | sh"
+    echo "======================================================================"
+fi
+
 echo "Stopping service..."
 if command -v service >/dev/null 2>&1; then
     service pppoe_toggle_ha stop || true
