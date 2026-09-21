@@ -22,7 +22,7 @@ trap cleanup EXIT
 cd "$TMPDIR" || exit 1
 
 SKIP_XMLRPC_DEPLOY=0
-BRANCH=dev
+BRANCH=main
 for arg in "$@"; do
     case "$arg" in
         --no-deploy) SKIP_XMLRPC_DEPLOY=1 ;;

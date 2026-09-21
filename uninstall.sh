@@ -10,13 +10,16 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-BRANCH=dev
+BRANCH=main
 
 if [ "${PT_PEER_MODE:-0}" = "1" ]; then
     MODE="peer"
 else
     MODE="self"
 fi
+
+echo ""
+echo "Detecting node IPs..."
 
 detect_node_ips() {
     php -r '
@@ -34,19 +37,23 @@ NODE_INFO=$(detect_node_ips || true)
 if [ -n "$NODE_INFO" ]; then
     SELF_SYNC_IP=$(echo "$NODE_INFO" | head -1)
     PEER_SYNC_IP=$(echo "$NODE_INFO" | tail -1)
+    if [ -n "$SELF_SYNC_IP" ] && [ -n "$PEER_SYNC_IP" ]; then
+        echo "Self sync IP: ${SELF_SYNC_IP}"
+        echo "Peer sync IP: ${PEER_SYNC_IP}"
+    fi
 fi
 
 SSH_RESULT=0
 if [ "$MODE" = "self" ] && [ -n "$PEER_SYNC_IP" ]; then
     echo ""
-    echo "Removing from the peer via SSH..."
+    echo "Removing on the peer via SSH..."
 
     if curl -sfL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/uninstall.sh \
       | ssh -T -i /root/.ssh/pppoe_toggle_ha.ssh -o BatchMode=yes -o ConnectTimeout=10 root@"$PEER_SYNC_IP" \
             "cat > /tmp/pt_ssh_uninstall.sh && PT_PEER_MODE=1 sh /tmp/pt_ssh_uninstall.sh >/dev/null 2>&1; RC=\$?; rm -f /tmp/pt_ssh_uninstall.sh; exit \$RC"; then
-        echo "  Successfully removed from peer $PEER_SYNC_IP"
+        echo "  Successfully removed on peer $PEER_SYNC_IP"
     else
-        echo "  FAILED to remove from peer"
+        echo "  FAILED to remove on peer"
         SSH_RESULT=1
     fi
     echo "======================================================================"
