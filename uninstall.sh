@@ -18,6 +18,9 @@ else
     MODE="self"
 fi
 
+echo ""
+echo "Detecting node IPs..."
+
 detect_node_ips() {
     php -r '
         $xml = simplexml_load_file("/conf/config.xml");
