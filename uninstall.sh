@@ -1,9 +1,9 @@
 #!/bin/sh
 set -e
 
-echo "====================================================="
+echo "======================================================================"
 echo "  PPPoE Toggle HA — Uninstaller"
-echo "====================================================="
+echo "======================================================================"
 
 if [ "$(id -u)" != "0" ]; then
     echo "This script must be run as root"
@@ -39,9 +39,7 @@ fi
 SSH_RESULT=0
 if [ "$MODE" = "self" ] && [ -n "$PEER_SYNC_IP" ]; then
     echo ""
-    echo "======================================================================"
-    echo "  Removing from the peer via SSH..."
-    echo "======================================================================"
+    echo "Removing from the peer via SSH..."
 
     if curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/uninstall.sh \
       | ssh -T -i /root/.ssh/pppoe_toggle_ha.ssh -o ConnectTimeout=10 root@"$PEER_SYNC_IP" \
@@ -115,6 +113,6 @@ fi
 
 hash -r 2>/dev/null || rehash 2>/dev/null
 
-echo "====================================================="
+echo "======================================================================"
 echo "  PPPoE Toggle HA uninstalled successfully!"
-echo "====================================================="
+echo "======================================================================"
