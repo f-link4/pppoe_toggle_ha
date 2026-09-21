@@ -6,12 +6,12 @@ vhid = 1
 ; WAN interface key in pfSense (usually 'wan')
 ifkey = wan
 
-; Hostnames of the two CARP nodes (as returned by `hostname`)
-nodeA = gateway1
-nodeB = gateway2
+; Sync IPs of the two CARP nodes (auto-detected by installer)
+nodeA = 
+nodeB = 
 
 ; SSH key for inter-node communication
-ssh_key = /root/.ssh/secret.ssh
+ssh_key = /root/.ssh/pppoe_toggle_ha.ssh
 
 ; Timeouts (seconds)
 cooldown_time = 10
