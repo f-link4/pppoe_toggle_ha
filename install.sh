@@ -208,8 +208,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
     if [ "$XMLRPC" = "YES" ]; then
         echo ""
         echo "======================================================================"
-        echo "  Deploying to the peer via XMLRPC..."
-        echo "======================================================================"
+        echo "Deploying to the peer via XMLRPC..."
 
         SSH_KEY_B64=$(base64 < "$SSH_KEY")
         ARCHIVE_B64=$(base64 < "$TMPDIR/$ARCHIVE")
@@ -262,7 +261,6 @@ if [ -n "$PEER_SYNC_IP" ]; then
         ' -- "$SSH_KEY" "$SSH_KEY_B64" "$ARCHIVE_B64" "$BRANCH"
 
         XMLRPC_RESULT=$?
-        echo "======================================================================"
     else
         XMLRPC_RESULT=2
     fi
@@ -270,7 +268,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
     if [ "$XMLRPC_RESULT" != "0" ]; then
         echo ""
         echo "======================================================================"
-        echo " XMLRPC not configured, follow these steps:"
+        echo "XMLRPC not configured, follow these steps:"
         echo "======================================================================"
         if [ "$SSH_KEY_NEW" = "1" ]; then
             echo ""
@@ -285,7 +283,11 @@ if [ -n "$PEER_SYNC_IP" ]; then
             echo "Verify from this node (expected peer hostname w/o password prompt):"
             echo ""
             echo "  ssh -T -i $SSH_KEY root@$PEER_SYNC_IP hostname"
-            echo "======================================================================"
         fi
     fi
 fi
+
+echo "======================================================================"
+echo "  PPPoE Toggle HA installed successfully!"
+echo "    Usage: pppoe_toggle_ha help"
+echo "======================================================================"
