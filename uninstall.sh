@@ -10,7 +10,7 @@ if [ "$(id -u)" != "0" ]; then
     exit 1
 fi
 
-BRANCH=main
+BRANCH=dev
 
 if [ "${PT_PEER_MODE:-0}" = "1" ]; then
     MODE="peer"
