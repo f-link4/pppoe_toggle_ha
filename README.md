@@ -15,9 +15,9 @@ PPPoE Toggle HA — WAN interface management for CARP failover events on pfSense
 - flock protection against parallel runs
 - Works with new `if_pppoe` driver on pfSense 2.9.0
 
-> ⚠️ **Install on the MASTER node** with XMLRPC Sync enabled for automatic deployment to the peer.
-> Inter-node communication runs over SSH; the shared key is generated automatically during installation.
-> Make sure no firewall rules block SSH between the sync interfaces (required for HANDOVER/TAKEOVER/RELEASE).
+> ⚠️ **Install on the MASTER node** with XMLRPC Sync enabled for automatic deployment to the peer.  
+> Inter-node communication runs over SSH; the shared key is generated automatically during installation.  
+> Make sure no firewall rules block SSH between the sync interfaces (required for HANDOVER/TAKEOVER/RELEASE).  
 > If XMLRPC Sync is not configured, the installer will provide a manual SSH command to deploy to the peer.
 
 ## Install
