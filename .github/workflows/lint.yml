@@ -16,7 +16,7 @@ jobs:
   php-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: PHP lint
         run: |
           for f in pppoe_toggle_ha; do
