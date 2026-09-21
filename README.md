@@ -14,16 +14,19 @@ PPPoE Toggle HA — WAN interface management for CARP failover events on pfSense
 - RELEASE — Leave CARP maintenance mode on both nodes
 - flock protection against parallel runs
 - Works with new `if_pppoe` driver on pfSense 2.9.0
+> ⚠️ **Install on the MASTER node** with XMLRPC Sync enabled for automatic deployment to the peer.
+> Inter-node communication runs over SSH; the shared key is generated automatically during installation.
+> If XMLRPC Sync is not configured, the installer will print a manual SSH command to deploy to the peer.
 
 ## Install
 
 ```bash
-fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/main/install.sh | sh
+curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/main/install.sh | sh
 ```
 
 ## Uninstall
 ```bash
-fetch -o - https://github.com/f-link4/pppoe_toggle_ha/raw/main/uninstall.sh | sh
+curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/main/uninstall.sh | sh
 ```
 
 ## Support
