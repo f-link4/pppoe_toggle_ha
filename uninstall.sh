@@ -1,13 +1,69 @@
 #!/bin/sh
 set -e
 
-echo "====================================================="
+echo "======================================================================"
 echo "  PPPoE Toggle HA — Uninstaller"
-echo "====================================================="
+echo "======================================================================"
 
 if [ "$(id -u)" != "0" ]; then
     echo "This script must be run as root"
     exit 1
+fi
+
+BRANCH=main
+
+if [ "${PT_PEER_MODE:-0}" = "1" ]; then
+    MODE="peer"
+else
+    MODE="self"
+fi
+
+detect_node_ips() {
+    php -r '
+        $xml = simplexml_load_file("/conf/config.xml");
+        if ($xml === false) { exit(1); }
+        $iface = (string)$xml->hasync->pfsyncinterface;
+        if ($iface === "") { exit(1); }
+        $self = (string)$xml->interfaces->$iface->ipaddr;
+        $peer = (string)$xml->hasync->pfsyncpeerip;
+        echo $self . "\n" . $peer;
+    ' 2>/dev/null
+}
+
+NODE_INFO=$(detect_node_ips || true)
+if [ -n "$NODE_INFO" ]; then
+    SELF_SYNC_IP=$(echo "$NODE_INFO" | head -1)
+    PEER_SYNC_IP=$(echo "$NODE_INFO" | tail -1)
+fi
+
+SSH_RESULT=0
+if [ "$MODE" = "self" ] && [ -n "$PEER_SYNC_IP" ]; then
+    echo ""
+    echo "Removing from the peer via SSH..."
+
+    if curl -sfL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/uninstall.sh \
+      | ssh -T -i /root/.ssh/pppoe_toggle_ha.ssh -o BatchMode=yes -o ConnectTimeout=10 root@"$PEER_SYNC_IP" \
+            "cat > /tmp/pt_ssh_uninstall.sh && PT_PEER_MODE=1 sh /tmp/pt_ssh_uninstall.sh >/dev/null 2>&1; RC=\$?; rm -f /tmp/pt_ssh_uninstall.sh; exit \$RC"; then
+        echo "  Successfully removed from peer $PEER_SYNC_IP"
+    else
+        echo "  FAILED to remove from peer"
+        SSH_RESULT=1
+    fi
+    echo "======================================================================"
+else
+    SSH_RESULT=1
+fi
+
+if [ "$SSH_RESULT" != "0" ] && [ "$MODE" = "self" ] && [ -n "$PEER_SYNC_IP" ]; then
+    echo ""
+    echo "======================================================================"
+    echo " SSH to peer failed, remove manually on peer:"
+    echo "======================================================================"
+    echo ""
+    echo "  Run on peer ($PEER_SYNC_IP):"
+    echo ""
+    echo "    curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/uninstall.sh | sh"
+    echo "======================================================================"
 fi
 
 echo "Stopping service..."
@@ -25,16 +81,25 @@ FILES="
 /usr/local/etc/rc.d/pppoe_toggle_ha
 /usr/local/etc/devd/pppoe_toggle_ha.conf
 /usr/local/etc/pppoe_toggle_ha.conf
+/root/.ssh/pppoe_toggle_ha.ssh
 /tmp/pppoe_toggle_ha.state
 /tmp/pppoe_toggle_ha.cooldown
 "
 for f in $FILES; do
     if [ -e "$f" ]; then
         rm -fv "$f" || true
-    else
-        echo "Not found: $f"
     fi
 done
+
+echo "Removing key from authorized_keys..."
+AUTHORIZED_KEYS="/root/.ssh/authorized_keys"
+if [ -f "$AUTHORIZED_KEYS" ]; then
+    if grep -q 'pppoe_toggle_ha' "$AUTHORIZED_KEYS" 2>/dev/null; then
+        awk '!/pppoe_toggle_ha/' "$AUTHORIZED_KEYS" > "${AUTHORIZED_KEYS}.tmp.$$" \
+            && mv "${AUTHORIZED_KEYS}.tmp.$$" "$AUTHORIZED_KEYS"
+        chmod 600 "$AUTHORIZED_KEYS"
+    fi
+fi
 
 echo "Removing from autostart..."
 if command -v sysrc >/dev/null 2>&1; then
@@ -48,6 +113,6 @@ fi
 
 hash -r 2>/dev/null || rehash 2>/dev/null
 
-echo "====================================================="
+echo "======================================================================"
 echo "  PPPoE Toggle HA uninstalled successfully!"
-echo "====================================================="
+echo "======================================================================"
