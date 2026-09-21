@@ -40,9 +40,9 @@ $config_file = '/usr/local/etc/pppoe_toggle_ha.conf';
 $default_config = [
     'vhid'            => 1,
     'ifkey'           => 'wan',
-    'nodeA'           => 'gateway1',
-    'nodeB'           => 'gateway2',
-    'ssh_key'         => '/root/.ssh/secret.ssh',
+    'nodeA'           => '',
+    'nodeB'           => '',
+    'ssh_key'         => '/root/.ssh/pppoe_toggle_ha.ssh',
     'cooldown_time'   => 10,
     'ip_timeout'      => 30,
     'conn_timeout'    => 300,
@@ -409,22 +409,35 @@ function apply_carp_state($state): void
 
 function peer_cmd(string $cmd): bool
 {
-    global $ssh_key, $nodeA, $nodeB;
-    $self = strtolower(php_uname('n'));
-    $peer = '';
-    if (strpos($self, $nodeA) !== false) {
-        $peer = $nodeB;
-    } elseif (strpos($self, $nodeB) !== false) {
-        $peer = $nodeA;
-    }
-    if ($peer === '') {
+    global $config, $nodeA, $nodeB, $ssh_key;
+    $iface = (string)($config['hasync']['pfsyncinterface'] ?? '');
+    if ($iface === '') {
         return false;
     }
-    exec("ssh -i " . escapeshellarg($ssh_key)
-        . " -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
-        . " " . escapeshellarg("root@{$peer}")
+    $self = (string)($config['interfaces'][$iface]['ipaddr'] ?? '');
+    $nodeA = (string)$nodeA;
+    $nodeB = (string)$nodeB;
+    if ($self === '' || $nodeA === '' || $nodeB === '') {
+        return false;
+    }
+    if ($self === $nodeA) {
+        $peer = $nodeB;
+    } elseif ($self === $nodeB) {
+        $peer = $nodeA;
+    } else {
+        return false;
+    }
+    $out = [];
+    exec(
+        "ssh -T -i " . escapeshellarg($ssh_key)
+        . " -o StrictHostKeyChecking=accept-new"
+        . " -o ConnectTimeout=10 "
+        . escapeshellarg("root@{$peer}")
         . " " . escapeshellarg($cmd)
-        . " 2>&1", $out, $ret);
+        . " 2>&1",
+        $out,
+        $ret
+    );
     return $ret === 0;
 }
 
