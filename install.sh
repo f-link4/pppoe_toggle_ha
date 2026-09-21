@@ -21,7 +21,15 @@ trap cleanup EXIT
 
 cd "$TMPDIR" || exit 1
 
-BRANCH="${1:-dev}"
+SKIP_XMLRPC_DEPLOY=0
+BRANCH=dev
+for arg in "$@"; do
+    case "$arg" in
+        --no-deploy) SKIP_XMLRPC_DEPLOY=1 ;;
+        --*)         echo "Unknown option: $arg" >&2; exit 1 ;;
+        *)           BRANCH="$arg" ;;
+    esac
+done
 ARCHIVE="${BRANCH}.tar.gz"
 
 if [ -f "$ARCHIVE" ]; then
@@ -194,7 +202,7 @@ fi
 
 hash -r 2>/dev/null || rehash 2>/dev/null
 
-if [ -n "$PEER_SYNC_IP" ]; then
+if [ -n "$PEER_SYNC_IP" ] && [ "$SKIP_XMLRPC_DEPLOY" != "1" ]; then
     XMLRPC=$(php -r '
         $xml = simplexml_load_file("/conf/config.xml");
         if ($xml === false) { echo "NO"; exit; }
@@ -278,7 +286,7 @@ if [ -n "$PEER_SYNC_IP" ]; then
             printf "    root@%s 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && \\\\\n" "$PEER_SYNC_IP"
             printf "    cat > %s && \\\\\n" "$SSH_KEY"
             printf "    chmod 600 %s && \\\\\n" "$SSH_KEY"
-            printf "    curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/install.sh | sh'\n"
+            printf "    curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/install.sh | sh -s -- --no-deploy'\n"
             echo ""
             echo "Verify from this node (expected peer hostname w/o password prompt):"
             echo ""
