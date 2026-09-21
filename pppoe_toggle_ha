@@ -467,7 +467,7 @@ function apply_takeover(): void
     }
 }
 
-$carp_state = preg_match('/carp:\s+(MASTER|BACKUP|INIT)\s+vhid\s+' . preg_quote((string)$vhid, '/') . '/i', shell_exec("/sbin/ifconfig -a 2>/dev/null") ?? '', $m) ? strtoupper($m[1]) : '';
+$carp_state = preg_match('/carp:\s+(MASTER|BACKUP|INIT)\s+vhid\s+' . preg_quote((string)$vhid, '/') . '(?!\d)/i', shell_exec("/sbin/ifconfig -a 2>/dev/null") ?? '', $m) ? strtoupper($m[1]) : '';
 $pppoe_state = pppoe_state($ifkey);
 $is_enabled = isset($config['interfaces'][$ifkey]['enable']);
 
