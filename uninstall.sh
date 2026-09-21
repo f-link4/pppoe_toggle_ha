@@ -45,8 +45,8 @@ if [ "$MODE" = "self" ] && [ -n "$PEER_SYNC_IP" ]; then
 
     if curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/uninstall.sh \
       | ssh -T -i /root/.ssh/pppoe_toggle_ha.ssh -o ConnectTimeout=10 root@"$PEER_SYNC_IP" \
-            "cat > /tmp/pt_ssh_uninstall.sh && sh /tmp/pt_ssh_uninstall.sh && rm -f /tmp/pt_ssh_uninstall.sh"; then
-        echo "  Successfully removed from peer ($PEER_SYNC_IP)"
+            "cat > /tmp/pt_ssh_uninstall.sh && sh /tmp/pt_ssh_uninstall.sh >/dev/null 2>&1 && rm -f /tmp/pt_ssh_uninstall.sh"; then
+        echo "  Successfully removed from peer $PEER_SYNC_IP"
     else
         echo "  FAILED to remove from peer"
         SSH_RESULT=1
@@ -90,8 +90,6 @@ FILES="
 for f in $FILES; do
     if [ -e "$f" ]; then
         rm -fv "$f" || true
-    else
-        echo "Not found: $f"
     fi
 done
 
