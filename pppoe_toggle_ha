@@ -19,6 +19,7 @@ if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help']))
     echo "  pppoe_toggle_ha @<VHID> MASTER conn    - Enable WAN (wait for connectivity)\n";
     echo "  pppoe_toggle_ha @<VHID> BACKUP         - Disable WAN (CARP BACKUP)\n";
     echo "  pppoe_toggle_ha RECONCILE              - Syncs WAN with CARP state (at boot)\n";
+    echo "  pppoe_toggle_ha CLEAR                  - Clear state and cooldown files\n";
     echo "  pppoe_toggle_ha RECONNECT              - Force WAN reconnect\n";
     echo "  pppoe_toggle_ha HANDOVER               - Graceful Handover MASTER to BACKUP\n";
     echo "  pppoe_toggle_ha TAKEOVER               - Graceful Takeover BACKUP to MASTER\n";
@@ -473,6 +474,15 @@ $is_enabled = isset($config['interfaces'][$ifkey]['enable']);
 
 if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONCILE') {
     apply_carp_state($carp_state);
+    exit(0);
+}
+if (isset($argv[1]) && strtoupper($argv[1]) === 'CLEAR') {
+    foreach ([$pt_config['state_file'], $pt_config['cooldown_file']] as $f) {
+        if (file_exists($f)) {
+            @unlink($f);
+            echo "Removed: $f\n";
+        }
+    }
     exit(0);
 }
 if (isset($argv[1]) && strtoupper($argv[1]) === 'RECONNECT') {
