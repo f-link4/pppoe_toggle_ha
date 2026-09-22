@@ -1,6 +1,6 @@
 # PPPoE Toggle HA for pfSense
 
-WAN interface management during CARP failover on pfSense 2.9.0
+WAN interface management during CARP failover on pfSense
 
 ## Features
 
