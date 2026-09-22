@@ -13,7 +13,7 @@ WAN interface management during CARP failover on pfSense
 - TAKEOVER - graceful takeover from BACKUP to MASTER (preinit WAN, then switch CARP)
 - RELEASE - leave CARP maintenance mode on both nodes
 - `flock` protection against parallel runs
-- Compatible with the `if_pppoe` driver on pfSense 2.9.0
+- Compatible with the new `if_pppoe` driver on pfSense (FreeBSD 14+)
 
 > ⚠️ **Recommended:** install on the MASTER node with XMLRPC Sync enabled for automatic deployment to the peer.  
 > Inter-node communication relies on SSH; the shared key is generated automatically during installation.  
