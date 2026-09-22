@@ -15,7 +15,7 @@ WAN interface management during CARP failover on pfSense
 - `flock` protection against parallel runs
 - Compatible with the new `if_pppoe` driver on pfSense (FreeBSD 14+)
 
-> ⚠️ **Recommended:** install on the MASTER node with XMLRPC Sync enabled for automatic deployment to the peer.  
+> **Recommended:** install on the MASTER node with XMLRPC Sync enabled for automatic deployment to the peer.  
 > Inter-node communication relies on SSH; the shared key is generated automatically during installation.  
 > Ensure no firewall rules block SSH between the sync interfaces - required for HANDOVER, TAKEOVER, and RELEASE.  
 > If XMLRPC Sync is not configured, the installer will provide a manual SSH command to deploy to the peer.
