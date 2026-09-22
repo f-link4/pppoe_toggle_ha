@@ -7,11 +7,11 @@ WAN interface management during CARP failover on pfSense 2.9.0
 - Automatically enables/disables WAN on CARP MASTER/BACKUP transitions
 - IPv4 and IPv6 support
 - DHCPv6 + radvd management on tracked interfaces
-- RECONCILE — syncs WAN with CARP state (automatically at boot)
-- RECONNECT — force WAN reconnect (add to cron: `/usr/local/sbin/pppoe_toggle_ha RECONNECT`)
-- HANDOVER — graceful handover from MASTER to BACKUP (preinit WAN, then switch CARP)
-- TAKEOVER — graceful takeover from BACKUP to MASTER (preinit WAN, then switch CARP)
-- RELEASE — leave CARP maintenance mode on both nodes
+- RECONCILE - syncs WAN with CARP state (automatically at boot)
+- RECONNECT - force WAN reconnect (add to cron: `/usr/local/sbin/pppoe_toggle_ha RECONNECT`)
+- HANDOVER - graceful handover from MASTER to BACKUP (preinit WAN, then switch CARP)
+- TAKEOVER - graceful takeover from BACKUP to MASTER (preinit WAN, then switch CARP)
+- RELEASE - leave CARP maintenance mode on both nodes
 - `flock` protection against parallel runs
 - Compatible with the `if_pppoe` driver on pfSense 2.9.0
 
