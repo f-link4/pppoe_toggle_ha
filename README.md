@@ -23,13 +23,13 @@ WAN interface management during CARP failover on pfSense
 ## Install
 
 ```sh
-curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/main/install.sh | sh
+curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/main/install.sh | sh; rehash
 ```
 
 ## Uninstall
 
 ```sh
-curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/main/uninstall.sh | sh
+curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/main/uninstall.sh | sh; rehash
 ```
 
 ## Support
