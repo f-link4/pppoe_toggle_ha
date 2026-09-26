@@ -1,6 +1,6 @@
 # PPPoE Toggle HA for pfSense
 
-WAN interface management during CARP failover on pfSense 2.9.0
+WAN interface management during CARP failover on pfSense
 
 ## Features
 
@@ -13,23 +13,23 @@ WAN interface management during CARP failover on pfSense 2.9.0
 - TAKEOVER - graceful takeover from BACKUP to MASTER (preinit WAN, then switch CARP)
 - RELEASE - leave CARP maintenance mode on both nodes
 - `flock` protection against parallel runs
-- Compatible with the `if_pppoe` driver on pfSense 2.9.0
+- Compatible with the new `if_pppoe` driver on pfSense (FreeBSD 14+)
 
-> ⚠️ **Recommended:** install on the MASTER node with XMLRPC Sync enabled for automatic deployment to the peer.  
+> **Recommended:** install on the MASTER node with XMLRPC Sync enabled for automatic deployment to the peer.  
 > Inter-node communication relies on SSH; the shared key is generated automatically during installation.  
-> Ensure no firewall rules block SSH between the sync interfaces - required for HANDOVER, TAKEOVER, and RELEASE.  
+> Ensure no firewall rules block SSH between sync interfaces - required for HANDOVER, TAKEOVER, RELEASE.  
 > If XMLRPC Sync is not configured, the installer will provide a manual SSH command to deploy to the peer.
 
 ## Install
 
 ```sh
-curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/main/install.sh | sh
+curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/main/install.sh | sh; rehash
 ```
 
 ## Uninstall
 
 ```sh
-curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/main/uninstall.sh | sh
+curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/main/uninstall.sh | sh; rehash
 ```
 
 ## Support

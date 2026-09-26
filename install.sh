@@ -200,8 +200,6 @@ if command -v service >/dev/null 2>&1; then
     service pppoe_toggle_ha start || true
 fi
 
-hash -r 2>/dev/null || rehash 2>/dev/null
-
 if [ -n "$PEER_SYNC_IP" ] && [ "$SKIP_XMLRPC_DEPLOY" != "1" ]; then
     XMLRPC=$(php -r '
         $xml = simplexml_load_file("/conf/config.xml");
