@@ -504,6 +504,12 @@ function store_ssh(): int
     $pub_trim = trim($pub);
     $b64 = base64_encode($pub_trim);
 
+    // === DEBUG ===
+    echo "DEBUG pub: [" . $pub_trim . "]\n";
+    echo "DEBUG b64: [" . $b64 . "]\n";
+    echo "DEBUG b64 len: " . strlen($b64) . "\n";
+    // === END DEBUG ===
+
     $changed = false;
 
     foreach ($config['system']['user'] as &$user) {
