@@ -505,7 +505,6 @@ function store_ssh(): int
     $b64 = base64_encode($pub_trim);
 
     $changed = false;
-    $user_item = null;
 
     foreach ($config['system']['user'] as &$user) {
         if ((string)$user['name'] !== 'admin') {
@@ -513,46 +512,21 @@ function store_ssh(): int
         }
 
         $existing = (string)($user['authorizedkeys'] ?? '');
-        $valid_keys = [];
 
-        foreach (preg_split("/\s+/", $existing) as $k) {
-            if ($k === "") {
-                continue;
-            }
-            $decoded = base64_decode($k, true);
-            if ($decoded !== false && strpos($decoded, 'ssh-') === 0) {
-                $valid_keys[] = $k;
-            }
+        if (strpos($existing, $b64) !== false) {
+            echo "[ OK ] Key already present in config.xml\n";
+            break;
         }
 
-        if (!in_array($b64, $valid_keys, true)) {
-            $valid_keys[] = $b64;
-            $changed = true;
-        }
-
-        $new_value = implode("\n", $valid_keys);
-
-        if ($new_value !== $existing) {
-            $user['authorizedkeys'] = $new_value;
-            $changed = true;
-        }
-
-        $user_item = $user;
+        $user['authorizedkeys'] = trim($existing . "\n" . $b64);
+        $changed = true;
         break;
     }
     unset($user);
 
     if ($changed) {
-        write_config("pppoe_toggle_ha: update SSH key for admin", false);
-        echo "[ OK ] Key stored in config.xml\n";
-    } else {
-        echo "[ OK ] Key already present in config.xml\n";
-    }
-
-    if ($user_item !== null) {
-        require_once("auth.inc");
-        local_user_set($user_item);
-        echo "[ OK ] authorized_keys file updated\n";
+        write_config("pppoe_toggle_ha: add SSH key to admin", false);
+        echo "[ OK ] Key added to config.xml\n";
     }
 
     return 0;
