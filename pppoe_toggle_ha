@@ -496,13 +496,7 @@ function store_ssh(): int
         return 1;
     }
 
-    $pub = shell_exec("/usr/bin/ssh-keygen -y -f " . escapeshellarg($ssh_key) . " 2>/dev/null");
-    if (empty($pub) || strpos($pub, 'ssh-') !== 0) {
-        echo "[FAIL] Cannot read public key from {$ssh_key}\n";
-        return 1;
-    }
-    $pub_trim = trim($pub);
-
+    $pub = trim(shell_exec("/usr/bin/ssh-keygen -y -f " . escapeshellarg($ssh_key) . " 2>/dev/null"));
     $changed = false;
 
     foreach ($config['system']['user'] as &$user) {
@@ -517,15 +511,15 @@ function store_ssh(): int
             $decoded = '';
         }
 
-        if (strpos($decoded, $pub_trim) !== false) {
-            echo "[ OK ] Key already present in config.xml\n";
+        if (strpos($decoded, $pub) !== false) {
+            echo "[ OK ] SSH key present in config.xml\n";
             break;
         }
 
         if ($decoded === '') {
-            $new_plain = $pub_trim;
+            $new_plain = $pub;
         } else {
-            $new_plain = rtrim($decoded, "\n") . "\n" . $pub_trim;
+            $new_plain = rtrim($decoded, "\n") . "\n" . $pub;
         }
 
         $user['authorizedkeys'] = base64_encode($new_plain);
@@ -536,7 +530,7 @@ function store_ssh(): int
 
     if ($changed) {
         write_config("pppoe_toggle_ha: add SSH key to admin", false);
-        echo "[ OK ] Key added to config.xml\n";
+        echo "[ OK ] SSH key stored in config.xml\n";
     }
 
     return 0;
@@ -569,18 +563,17 @@ function diag_ssh(): int
         echo "[ OK ] SSH key permissions are 600\n";
     }
 
-    $pub = shell_exec("/usr/bin/ssh-keygen -y -f " . escapeshellarg($ssh_key) . " 2>/dev/null");
+    $pub = trim(shell_exec("/usr/bin/ssh-keygen -y -f " . escapeshellarg($ssh_key) . " 2>/dev/null"));
     if (empty($pub) || strpos($pub, 'ssh-') !== 0) {
         echo "[FAIL] Cannot read public key from {$ssh_key}\n";
         return 1;
     }
-    echo "[ OK ] Public key readable: " . substr(trim($pub), 0, 40) . "...\n";
+    echo "[ OK ] Public key readable: " . substr($pub, 0, 40) . "...\n";
 
     $auth_keys = '/root/.ssh/authorized_keys';
-    $pub_trim = trim($pub);
     if (file_exists($auth_keys)) {
         $auth_content = file_get_contents($auth_keys);
-        if (strpos($auth_content, $pub_trim) !== false) {
+        if (strpos($auth_content, $pub) !== false) {
             echo "[ OK ] Public key present in {$auth_keys}\n";
         } else {
             echo "[WARN] Public key NOT found in {$auth_keys} — peer cannot SSH into this node\n";
