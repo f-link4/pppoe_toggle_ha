@@ -568,10 +568,6 @@ function test_ssh(): int
     }
 
     echo "---\n";
-    echo "To verify reverse SSH (peer -> this node), run on peer:\n";
-    echo "  ssh -T -i {$ssh_key} root@{$self} hostname\n";
-
-    echo "---\n";
     echo $ok ? "Result: OK\n" : "Result: WARNINGS/FAILURES\n";
     return $ok ? 0 : 1;
 }
