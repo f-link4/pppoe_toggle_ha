@@ -249,7 +249,7 @@ if [ -n "$PEER_SYNC_IP" ] && [ "$SKIP_XMLRPC_DEPLOY" != "1" ]; then
 
                 shell_exec(\"cd /tmp/pppoe_toggle_ha && tar -xzf " . $archive_name . "\");
 
-                \$out = shell_exec(\"cd /tmp/pppoe_toggle_ha/" . $extract_dir . " && sh install.sh 2>&1\");
+                \$out = shell_exec(\"cd /tmp/pppoe_toggle_ha/" . $extract_dir . " && sh install.sh --no-deploy 2>&1\");
                 file_put_contents(\"/tmp/pppoe_toggle_ha_install\", \$out);
 
                 return true;
@@ -284,7 +284,7 @@ if [ -n "$PEER_SYNC_IP" ] && [ "$SKIP_XMLRPC_DEPLOY" != "1" ]; then
             printf "    root@%s 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && \\\\\n" "$PEER_SYNC_IP"
             printf "    cat > %s && \\\\\n" "$SSH_KEY"
             printf "    chmod 600 %s && \\\\\n" "$SSH_KEY"
-            printf "    curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/install.sh | sh -s -- --no-deploy; rehash'\n"
+            printf "    curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/install.sh | sh -s -- --no-deploy'\n"
             echo ""
             echo "Verify from this node (expected peer hostname w/o password prompt):"
             echo ""
