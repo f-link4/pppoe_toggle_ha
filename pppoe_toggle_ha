@@ -409,32 +409,45 @@ function apply_carp_state($state): void
     update_state_file($state, true);
 }
 
-function peer_cmd(string $cmd): bool
+function resolve_peer(): array
 {
-    global $config, $nodeA, $nodeB, $ssh_key;
+    global $config, $nodeA, $nodeB;
     $iface = (string)($config['hasync']['pfsyncinterface'] ?? '');
     if ($iface === '') {
-        return false;
+        return ['error' => 'HA sync interface not configured'];
     }
     $self = (string)($config['interfaces'][$iface]['ipaddr'] ?? '');
+    if ($self === '') {
+        return ['error' => "HA sync interface '{$iface}' has no IP assigned"];
+    }
     $nodeA = (string)$nodeA;
     $nodeB = (string)$nodeB;
-    if ($self === '' || $nodeA === '' || $nodeB === '') {
-        return false;
+    if ($nodeA === '' || $nodeB === '') {
+        return ['error' => 'nodeA/nodeB not set — reinstall or set manually'];
     }
     if ($self === $nodeA) {
-        $peer = $nodeB;
-    } elseif ($self === $nodeB) {
-        $peer = $nodeA;
-    } else {
+        return ['self' => $self, 'peer' => $nodeB, 'peer_name' => 'nodeB'];
+    }
+    if ($self === $nodeB) {
+        return ['self' => $self, 'peer' => $nodeA, 'peer_name' => 'nodeA'];
+    }
+    return ['error' => "Self IP {$self} does not match nodeA ({$nodeA}) or nodeB ({$nodeB})"];
+}
+
+function peer_cmd(string $cmd): bool
+{
+    global $ssh_key;
+    $r = resolve_peer();
+    if (isset($r['error'])) {
         return false;
     }
     $out = [];
+    $ret = 0;
     exec(
-        "ssh -T -i " . escapeshellarg($ssh_key)
+        "/usr/bin/ssh -T -i " . escapeshellarg($ssh_key)
         . " -o StrictHostKeyChecking=accept-new"
         . " -o ConnectTimeout=10 "
-        . escapeshellarg("root@{$peer}")
+        . escapeshellarg("root@{$r['peer']}")
         . " " . escapeshellarg($cmd)
         . " 2>&1",
         $out,
@@ -491,6 +504,7 @@ function test_ssh(): int
     $perms = substr(sprintf('%o', fileperms($ssh_key)), -3);
     if ($perms !== '600') {
         echo "[WARN] SSH key permissions are {$perms}, expected 600\n";
+        $ok = false;
     } else {
         echo "[ OK ] SSH key permissions are 600\n";
     }
@@ -517,53 +531,19 @@ function test_ssh(): int
         $ok = false;
     }
 
-    $iface = (string)($config['hasync']['pfsyncinterface'] ?? '');
-    if ($iface === '') {
-        echo "[FAIL] hasync.pfsyncinterface is not set\n";
+    $r = resolve_peer();
+    if (isset($r['error'])) {
+        echo "[FAIL] {$r['error']}\n";
         return 1;
     }
-    $self = (string)($config['interfaces'][$iface]['ipaddr'] ?? '');
-    if ($self === '') {
-        echo "[FAIL] No IP on pfsync interface '{$iface}'\n";
-        return 1;
-    }
-    echo "[ OK ] Self sync IP: {$self}\n";
+    echo "[ OK ] Self sync IP: {$r['self']}\n";
+    echo "[ OK ] Peer IP: {$r['peer']} ({$r['peer_name']})\n";
 
-    $nodeA = (string)$nodeA;
-    $nodeB = (string)$nodeB;
-    if ($self === $nodeA) {
-        $peer = $nodeB;
-        $peer_name = 'nodeB';
-    } elseif ($self === $nodeB) {
-        $peer = $nodeA;
-        $peer_name = 'nodeA';
+    if (peer_cmd('hostname')) {
+        echo "[ OK ] SSH to peer works\n";
     } else {
-        echo "[FAIL] Self IP {$self} does not match nodeA ({$nodeA}) or nodeB ({$nodeB})\n";
-        echo "       Run 'pppoe_toggle_ha show_config' to verify.\n";
-        return 1;
-    }
-    echo "[ OK ] Peer IP: {$peer} ({$peer_name})\n";
-
-    $out = [];
-    $ret = 0;
-    exec(
-        "/usr/bin/ssh -T -i " . escapeshellarg($ssh_key)
-        . " -o StrictHostKeyChecking=accept-new"
-        . " -o BatchMode=yes"
-        . " -o ConnectTimeout=10 "
-        . escapeshellarg("root@{$peer}")
-        . " " . escapeshellarg("hostname")
-        . " 2>&1",
-        $out,
-        $ret
-    );
-    $ssh_out = trim(implode("\n", $out));
-    if ($ret === 0 && $ssh_out !== '') {
-        echo "[ OK ] SSH to peer works. Peer hostname: {$ssh_out}\n";
-    } else {
-        echo "[FAIL] SSH to peer failed (exit {$ret})\n";
-        echo "       Output: {$ssh_out}\n";
-        echo "       Hint: run 'ssh -T -i {$ssh_key} root@{$peer} hostname' manually.\n";
+        echo "[FAIL] SSH to peer failed\n";
+        echo "       Hint: run 'ssh -T -i {$ssh_key} root@{$r['peer']} hostname' manually.\n";
         $ok = false;
     }
 
