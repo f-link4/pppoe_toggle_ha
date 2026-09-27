@@ -519,7 +519,8 @@ function store_ssh(): int
             if ($k === "") {
                 continue;
             }
-            if (base64_decode($k, true) !== false) {
+            $decoded = base64_decode($k, true);
+            if ($decoded !== false && strpos($decoded, 'ssh-') === 0) {
                 $valid_keys[] = $k;
             }
         }
@@ -529,7 +530,13 @@ function store_ssh(): int
             $changed = true;
         }
 
-        $user['authorizedkeys'] = implode("\n", $valid_keys);
+        $new_value = implode("\n", $valid_keys);
+
+        if ($new_value !== $existing) {
+            $user['authorizedkeys'] = $new_value;
+            $changed = true;
+        }
+
         $user_item = $user;
         break;
     }
