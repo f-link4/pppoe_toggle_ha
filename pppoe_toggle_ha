@@ -24,6 +24,7 @@ if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help']))
     echo "  pppoe_toggle_ha HANDOVER               - Graceful Handover MASTER to BACKUP\n";
     echo "  pppoe_toggle_ha TAKEOVER               - Graceful Takeover BACKUP to MASTER\n";
     echo "  pppoe_toggle_ha RELEASE                - Leave CARP maintenance on both nodes\n";
+    echo "  pppoe_toggle_ha test_ssh               - Test SSH connectivity to peer\n";
     echo "  pppoe_toggle_ha set_vhid <number>      - Set VHID to react on\n";
     echo "  pppoe_toggle_ha show_config            - Show current configuration\n";
     echo "  pppoe_toggle_ha help                   - Show this help\n";
@@ -468,6 +469,113 @@ function apply_takeover(): void
     }
 }
 
+function test_ssh(): int
+{
+    global $config, $nodeA, $nodeB, $ssh_key, $vhid;
+
+    $ok = true;
+
+    echo "=== pppoe_toggle_ha test_ssh ===\n";
+    echo "VHID:     {$vhid}\n";
+    echo "SSH key:  {$ssh_key}\n";
+    echo "nodeA:    " . ($nodeA !== '' ? $nodeA : '(not set)') . "\n";
+    echo "nodeB:    " . ($nodeB !== '' ? $nodeB : '(not set)') . "\n";
+    echo "---\n";
+
+    if (!file_exists($ssh_key)) {
+        echo "[FAIL] SSH key not found: {$ssh_key}\n";
+        return 1;
+    }
+    echo "[ OK ] SSH key exists\n";
+
+    $perms = substr(sprintf('%o', fileperms($ssh_key)), -3);
+    if ($perms !== '600') {
+        echo "[WARN] SSH key permissions are {$perms}, expected 600\n";
+    } else {
+        echo "[ OK ] SSH key permissions are 600\n";
+    }
+
+    $pub = shell_exec("/usr/bin/ssh-keygen -y -f " . escapeshellarg($ssh_key) . " 2>/dev/null");
+    if (empty($pub) || strpos($pub, 'ssh-') !== 0) {
+        echo "[FAIL] Cannot read public key from {$ssh_key}\n";
+        return 1;
+    }
+    echo "[ OK ] Public key readable: " . substr(trim($pub), 0, 40) . "...\n";
+
+    $auth_keys = '/root/.ssh/authorized_keys';
+    $pub_trim = trim($pub);
+    if (file_exists($auth_keys)) {
+        $auth_content = file_get_contents($auth_keys);
+        if (strpos($auth_content, $pub_trim) !== false) {
+            echo "[ OK ] Public key present in {$auth_keys}\n";
+        } else {
+            echo "[WARN] Public key NOT found in {$auth_keys} — peer cannot SSH into this node\n";
+            $ok = false;
+        }
+    } else {
+        echo "[WARN] {$auth_keys} does not exist — peer cannot SSH into this node\n";
+        $ok = false;
+    }
+
+    $iface = (string)($config['hasync']['pfsyncinterface'] ?? '');
+    if ($iface === '') {
+        echo "[FAIL] hasync.pfsyncinterface is not set\n";
+        return 1;
+    }
+    $self = (string)($config['interfaces'][$iface]['ipaddr'] ?? '');
+    if ($self === '') {
+        echo "[FAIL] No IP on pfsync interface '{$iface}'\n";
+        return 1;
+    }
+    echo "[ OK ] Self sync IP: {$self}\n";
+
+    $nodeA = (string)$nodeA;
+    $nodeB = (string)$nodeB;
+    if ($self === $nodeA) {
+        $peer = $nodeB;
+        $peer_name = 'nodeB';
+    } elseif ($self === $nodeB) {
+        $peer = $nodeA;
+        $peer_name = 'nodeA';
+    } else {
+        echo "[FAIL] Self IP {$self} does not match nodeA ({$nodeA}) or nodeB ({$nodeB})\n";
+        echo "       Run 'pppoe_toggle_ha show_config' to verify.\n";
+        return 1;
+    }
+    echo "[ OK ] Peer IP: {$peer} ({$peer_name})\n";
+
+    $out = [];
+    $ret = 0;
+    exec(
+        "/usr/bin/ssh -T -i " . escapeshellarg($ssh_key)
+        . " -o StrictHostKeyChecking=accept-new"
+        . " -o BatchMode=yes"
+        . " -o ConnectTimeout=10 "
+        . escapeshellarg("root@{$peer}")
+        . " " . escapeshellarg("hostname")
+        . " 2>&1",
+        $out,
+        $ret
+    );
+    $ssh_out = trim(implode("\n", $out));
+    if ($ret === 0 && $ssh_out !== '') {
+        echo "[ OK ] SSH to peer works. Peer hostname: {$ssh_out}\n";
+    } else {
+        echo "[FAIL] SSH to peer failed (exit {$ret})\n";
+        echo "       Output: {$ssh_out}\n";
+        echo "       Hint: run 'ssh -T -i {$ssh_key} root@{$peer} hostname' manually.\n";
+        $ok = false;
+    }
+
+    echo "---\n";
+    echo "To verify reverse SSH (peer -> this node), run on peer:\n";
+    echo "  ssh -T -i {$ssh_key} root@{$self} hostname\n";
+
+    echo "---\n";
+    echo $ok ? "Result: OK\n" : "Result: WARNINGS/FAILURES\n";
+    return $ok ? 0 : 1;
+}
+
 $carp_state = preg_match('/carp:\s+(MASTER|BACKUP|INIT)\s+vhid\s+' . preg_quote((string)$vhid, '/') . '(?!\d)/i', shell_exec("/sbin/ifconfig -a 2>/dev/null") ?? '', $m) ? strtoupper($m[1]) : '';
 $pppoe_state = pppoe_state($ifkey);
 $is_enabled = isset($config['interfaces'][$ifkey]['enable']);
@@ -503,6 +611,9 @@ if (isset($argv[1]) && strtoupper($argv[1]) === 'RELEASE') {
     interfaces_carp_set_maintenancemode(false);
     peer_cmd("/usr/local/sbin/pfSsh.php playback disablecarpmaint");
     exit(0);
+}
+if (isset($argv[1]) && strtolower($argv[1]) === 'test_ssh') {
+    exit(test_ssh());
 }
 if (preg_match('/@(\d+)$/', $subsystem, $matches) || preg_match('/^(\d+)@/', $subsystem, $matches)) {
     $vhidX = (int)$matches[1];
