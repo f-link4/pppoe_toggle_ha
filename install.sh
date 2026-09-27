@@ -263,7 +263,7 @@ if [ -n "$PEER_SYNC_IP" ] && [ "$SKIP_XMLRPC_DEPLOY" != "1" ]; then
             if ($response === false) {
                 exit(2);
             }
-            echo "  Successfully deployed to $protocol://$peer:$port\n";
+            echo "Successfully deployed to $protocol://$peer:$port\n";
         ' -- "$SSH_KEY" "$SSH_KEY_B64" "$ARCHIVE_B64" "$BRANCH"
 
         XMLRPC_RESULT=$?
