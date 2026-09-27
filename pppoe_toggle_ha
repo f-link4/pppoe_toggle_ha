@@ -502,7 +502,6 @@ function store_ssh(): int
         return 1;
     }
     $pub_trim = trim($pub);
-    $b64 = base64_encode($pub_trim);
 
     $changed = false;
 
@@ -512,17 +511,24 @@ function store_ssh(): int
         }
 
         $existing = (string)($user['authorizedkeys'] ?? '');
+        $decoded = base64_decode($existing, true);
 
-        if (strpos($existing, $b64) !== false) {
+        if ($decoded === false) {
+            $decoded = '';
+        }
+
+        if (strpos($decoded, $pub_trim) !== false) {
             echo "[ OK ] Key already present in config.xml\n";
             break;
         }
 
-        if ($existing === '') {
-            $user['authorizedkeys'] = $b64;
+        if ($decoded === '') {
+            $new_plain = $pub_trim;
         } else {
-            $user['authorizedkeys'] = $existing . "\n" . $b64;
+            $new_plain = rtrim($decoded, "\n") . "\n" . $pub_trim;
         }
+
+        $user['authorizedkeys'] = base64_encode($new_plain);
         $changed = true;
         break;
     }
