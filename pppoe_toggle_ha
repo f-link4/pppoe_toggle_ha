@@ -529,13 +529,7 @@ function store_ssh(): int
             $changed = true;
         }
 
-        $new_value = implode("\n", $valid_keys);
-
-        if ($new_value !== $existing) {
-            $user['authorizedkeys'] = $new_value;
-            $changed = true;
-        }
-
+        $user['authorizedkeys'] = implode("\n", $valid_keys);
         $user_item = $user;
         break;
     }
