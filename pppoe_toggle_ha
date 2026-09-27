@@ -24,6 +24,7 @@ if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help']))
     echo "  pppoe_toggle_ha HANDOVER               - Graceful Handover MASTER to BACKUP\n";
     echo "  pppoe_toggle_ha TAKEOVER               - Graceful Takeover BACKUP to MASTER\n";
     echo "  pppoe_toggle_ha RELEASE                - Leave CARP maintenance on both nodes\n";
+    echo "  pppoe_toggle_ha store_ssh              - Store SSH key in config.xml\n";
     echo "  pppoe_toggle_ha diag_ssh               - Test SSH connectivity to peer\n";
     echo "  pppoe_toggle_ha set_vhid <number>      - Set VHID to react on\n";
     echo "  pppoe_toggle_ha show_config            - Show current configuration\n";
@@ -486,6 +487,49 @@ function apply_takeover(): void
     }
 }
 
+function store_ssh(): int
+{
+    global $config, $ssh_key;
+
+    if (!file_exists($ssh_key)) {
+        echo "[FAIL] SSH key not found: {$ssh_key}\n";
+        return 1;
+    }
+
+    $pub = shell_exec("/usr/bin/ssh-keygen -y -f " . escapeshellarg($ssh_key) . " 2>/dev/null");
+    if (empty($pub) || strpos($pub, 'ssh-') !== 0) {
+        echo "[FAIL] Cannot read public key from {$ssh_key}\n";
+        return 1;
+    }
+    $pub_trim = trim($pub);
+    $b64 = base64_encode($pub_trim);
+
+    $changed = false;
+
+    foreach ($config['system']['user'] as &$user) {
+        if ((string)$user['name'] !== 'admin') {
+            continue;
+        }
+
+        $existing = (string)($user['authorizedkeys'] ?? '');
+        if (strpos($existing, $b64) === false) {
+            $user['authorizedkeys'] = trim($existing . ' ' . $b64);
+            $changed = true;
+        } else {
+            echo "[ OK ] Key present in config.xml\n";
+        }
+        break;
+    }
+    unset($user);
+
+    if ($changed) {
+        write_config("pppoe_toggle_ha: add SSH key to admin", false);
+        echo "[ OK ] Key stored in config.xml\n";
+    }
+
+    return 0;
+}
+
 function diag_ssh(): int
 {
     global $config, $nodeA, $nodeB, $ssh_key, $vhid;
@@ -591,6 +635,9 @@ if (isset($argv[1]) && strtoupper($argv[1]) === 'RELEASE') {
     interfaces_carp_set_maintenancemode(false);
     peer_cmd("/usr/local/sbin/pfSsh.php playback disablecarpmaint");
     exit(0);
+}
+if (isset($argv[1]) && strtolower($argv[1]) === 'store_ssh') {
+    exit(store_ssh());
 }
 if (isset($argv[1]) && strtolower($argv[1]) === 'diag_ssh') {
     exit(diag_ssh());
