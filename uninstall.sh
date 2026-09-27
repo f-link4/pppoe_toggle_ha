@@ -82,7 +82,7 @@ fi
 
 echo "Removing SSH key from config.xml..."
 if [ -x /usr/local/sbin/pppoe_toggle_ha ]; then
-    /usr/local/sbin/pppoe_toggle_ha remove_ssh || true
+    /usr/local/sbin/pppoe_toggle_ha ssh_key remove || true
 fi
 
 echo "Removing SSH key from authorized_keys..."
