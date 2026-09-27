@@ -519,7 +519,7 @@ function store_ssh(): int
 
         $existing = (string)($user['authorizedkeys'] ?? '');
         if (strpos($existing, $b64) === false) {
-            $user['authorizedkeys'] = trim($existing . ' ' . $b64);
+            $user['authorizedkeys'] = trim($existing . "\n" . $b64);
             $changed = true;
         } else {
             echo "[ OK ] Key present in config.xml\n";
