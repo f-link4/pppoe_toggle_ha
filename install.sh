@@ -249,7 +249,7 @@ if [ -n "$PEER_SYNC_IP" ] && [ "$SKIP_XMLRPC_DEPLOY" != "1" ]; then
 
                 shell_exec(\"cd /tmp/pppoe_toggle_ha && tar -xzf " . $archive_name . "\");
 
-                \$out = shell_exec(\"cd /tmp/pppoe_toggle_ha/" . $extract_dir . " && sh install.sh 2>&1\");
+                \$out = shell_exec(\"cd /tmp/pppoe_toggle_ha/" . $extract_dir . " && sh install.sh --no-deploy 2>&1\");
                 file_put_contents(\"/tmp/pppoe_toggle_ha_install\", \$out);
 
                 return true;
@@ -263,7 +263,7 @@ if [ -n "$PEER_SYNC_IP" ] && [ "$SKIP_XMLRPC_DEPLOY" != "1" ]; then
             if ($response === false) {
                 exit(2);
             }
-            echo "  Successfully deployed to $protocol://$peer:$port\n";
+            echo "Successfully deployed to $protocol://$peer:$port\n";
         ' -- "$SSH_KEY" "$SSH_KEY_B64" "$ARCHIVE_B64" "$BRANCH"
 
         XMLRPC_RESULT=$?
@@ -292,6 +292,8 @@ if [ -n "$PEER_SYNC_IP" ] && [ "$SKIP_XMLRPC_DEPLOY" != "1" ]; then
         fi
     fi
 fi
+
+/usr/local/sbin/pppoe_toggle_ha ssh_key add || true
 
 echo "======================================================================"
 echo "  PPPoE Toggle HA installed successfully!"

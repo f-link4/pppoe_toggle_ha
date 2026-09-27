@@ -69,7 +69,7 @@ if [ "$SSH_RESULT" != "0" ] && [ "$MODE" = "self" ] && [ -n "$PEER_SYNC_IP" ]; t
     echo ""
     echo "  Run on peer ($PEER_SYNC_IP):"
     echo ""
-    echo "    curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/uninstall.sh | sh"
+    echo "    curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/uninstall.sh | sh; rehash"
     echo "======================================================================"
 fi
 
@@ -80,25 +80,12 @@ else
     echo "service command not found; skipping service stop"
 fi
 
-echo "Removing files..."
-FILES="
-/usr/local/sbin/pppoe_toggle_ha
-/usr/local/sbin/pppoe_toggle_ha_master.sh
-/usr/local/sbin/pppoe_toggle_ha_backup.sh
-/usr/local/etc/rc.d/pppoe_toggle_ha
-/usr/local/etc/devd/pppoe_toggle_ha.conf
-/usr/local/etc/pppoe_toggle_ha.conf
-/root/.ssh/pppoe_toggle_ha.ssh
-/tmp/pppoe_toggle_ha.state
-/tmp/pppoe_toggle_ha.cooldown
-"
-for f in $FILES; do
-    if [ -e "$f" ]; then
-        rm -fv "$f" || true
-    fi
-done
+echo "Removing SSH key from config.xml..."
+if [ -x /usr/local/sbin/pppoe_toggle_ha ]; then
+    /usr/local/sbin/pppoe_toggle_ha ssh_key remove || true
+fi
 
-echo "Removing key from authorized_keys..."
+echo "Removing SSH key from authorized_keys..."
 AUTHORIZED_KEYS="/root/.ssh/authorized_keys"
 if [ -f "$AUTHORIZED_KEYS" ]; then
     if grep -q 'pppoe_toggle_ha' "$AUTHORIZED_KEYS" 2>/dev/null; then
@@ -118,7 +105,23 @@ else
     fi
 fi
 
-hash -r 2>/dev/null || rehash 2>/dev/null
+echo "Removing files..."
+FILES="
+/usr/local/sbin/pppoe_toggle_ha
+/usr/local/sbin/pppoe_toggle_ha_master.sh
+/usr/local/sbin/pppoe_toggle_ha_backup.sh
+/usr/local/etc/rc.d/pppoe_toggle_ha
+/usr/local/etc/devd/pppoe_toggle_ha.conf
+/usr/local/etc/pppoe_toggle_ha.conf
+/root/.ssh/pppoe_toggle_ha.ssh
+/tmp/pppoe_toggle_ha.state
+/tmp/pppoe_toggle_ha.cooldown
+"
+for f in $FILES; do
+    if [ -e "$f" ]; then
+        rm -fv "$f" || true
+    fi
+done
 
 echo "======================================================================"
 echo "  PPPoE Toggle HA uninstalled successfully!"
