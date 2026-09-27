@@ -69,7 +69,7 @@ if [ "$SSH_RESULT" != "0" ] && [ "$MODE" = "self" ] && [ -n "$PEER_SYNC_IP" ]; t
     echo ""
     echo "  Run on peer ($PEER_SYNC_IP):"
     echo ""
-    echo "    curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/uninstall.sh | sh"
+    echo "    curl -sL https://github.com/f-link4/pppoe_toggle_ha/raw/$BRANCH/uninstall.sh | sh; rehash"
     echo "======================================================================"
 fi
 
