@@ -518,7 +518,11 @@ function store_ssh(): int
             break;
         }
 
-        $user['authorizedkeys'] = trim($existing . "\n" . $b64);
+        if ($existing === '') {
+            $user['authorizedkeys'] = $b64;
+        } else {
+            $user['authorizedkeys'] = $existing . "\n" . $b64;
+        }
         $changed = true;
         break;
     }
