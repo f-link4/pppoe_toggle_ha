@@ -293,6 +293,8 @@ if [ -n "$PEER_SYNC_IP" ] && [ "$SKIP_XMLRPC_DEPLOY" != "1" ]; then
     fi
 fi
 
+/usr/local/sbin/pppoe_toggle_ha store_ssh || true
+
 echo "======================================================================"
 echo "  PPPoE Toggle HA installed successfully!"
 echo "    Usage: pppoe_toggle_ha help"
