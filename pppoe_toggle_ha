@@ -24,8 +24,6 @@ if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help']))
     echo "  pppoe_toggle_ha HANDOVER               - Graceful Handover MASTER to BACKUP\n";
     echo "  pppoe_toggle_ha TAKEOVER               - Graceful Takeover BACKUP to MASTER\n";
     echo "  pppoe_toggle_ha RELEASE                - Leave CARP maintenance on both nodes\n";
-    echo "  pppoe_toggle_ha store_ssh              - Store SSH key in config.xml\n";
-    echo "  pppoe_toggle_ha remove_ssh             - Remove SSH key from config.xml\n";
     echo "  pppoe_toggle_ha diag_ssh               - Test SSH connectivity to peer\n";
     echo "  pppoe_toggle_ha set_vhid <number>      - Set VHID to react on\n";
     echo "  pppoe_toggle_ha show_config            - Show current configuration\n";
@@ -488,12 +486,14 @@ function apply_takeover(): void
     }
 }
 
-function ssh_key_apply(bool $remove): int
+function ssh_key(string $action): int
 {
     global $config, $ssh_key;
 
+    $remove = ($action === 'remove');
+
     if (!file_exists($ssh_key)) {
-        echo "[FAIL] SSH key not found: {$ssh_key}\n";
+        echo "SSH key not found: {$ssh_key}\n";
         return 1;
     }
 
@@ -530,7 +530,7 @@ function ssh_key_apply(bool $remove): int
             }
         } else {
             if (strpos($decoded, $pub) !== false) {
-                echo "[ OK ] SSH key present in config.xml\n";
+                echo "SSH key present in config.xml\n";
                 break;
             }
             $new_plain = ($decoded === '') ? $pub : rtrim($decoded, "\n") . "\n" . $pub;
@@ -544,24 +544,14 @@ function ssh_key_apply(bool $remove): int
     if ($changed) {
         if ($remove) {
             write_config("pppoe_toggle_ha: remove SSH key from admin", false);
-            echo "[ OK ] SSH key removed from config.xml\n";
+            echo "SSH key removed from config.xml\n";
         } else {
             write_config("pppoe_toggle_ha: add SSH key to admin", false);
-            echo "[ OK ] SSH key stored in config.xml\n";
+            echo "SSH key stored in config.xml\n";
         }
     }
 
     return 0;
-}
-
-function store_ssh(): int
-{
-    return ssh_key_apply(false);
-}
-
-function remove_ssh(): int
-{
-    return ssh_key_apply(true);
 }
 
 function diag_ssh(): int
@@ -669,11 +659,13 @@ if (isset($argv[1]) && strtoupper($argv[1]) === 'RELEASE') {
     peer_cmd("/usr/local/sbin/pfSsh.php playback disablecarpmaint");
     exit(0);
 }
-if (isset($argv[1]) && strtolower($argv[1]) === 'store_ssh') {
-    exit(store_ssh());
-}
-if (isset($argv[1]) && strtolower($argv[1]) === 'remove_ssh') {
-    exit(remove_ssh());
+if (isset($argv[1]) && strtolower($argv[1]) === 'ssh_key') {
+    $action = strtolower($argv[2] ?? '');
+    if ($action !== 'add' && $action !== 'remove') {
+        echo "Usage: pppoe_toggle_ha ssh_key <add|remove>\n";
+        exit(1);
+    }
+    exit(ssh_key($action));
 }
 if (isset($argv[1]) && strtolower($argv[1]) === 'diag_ssh') {
     exit(diag_ssh());
