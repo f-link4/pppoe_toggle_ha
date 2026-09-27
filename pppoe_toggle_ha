@@ -537,12 +537,12 @@ function test_ssh(): int
         return 1;
     }
     echo "[ OK ] Self sync IP: {$r['self']}\n";
-    echo "[ OK ] Peer IP: {$r['peer']} ({$r['peer_name']})\n";
+    echo "[ OK ] Peer sync IP: {$r['peer']} ({$r['peer_name']})\n";
 
     if (peer_cmd('hostname')) {
-        echo "[ OK ] SSH to peer works\n";
+        echo "[ OK ] Peer reachable via SSH\n";
     } else {
-        echo "[FAIL] SSH to peer failed\n";
+        echo "[FAIL] Peer not reachable via SSH\n";
         echo "       Hint: run 'ssh -T -i {$ssh_key} root@{$r['peer']} hostname' manually.\n";
         $ok = false;
     }
