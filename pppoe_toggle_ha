@@ -151,7 +151,8 @@ $toggle_dhcpdv6  = !empty($pt_config['toggle_dhcpdv6']);
 $real_iface   = get_real_interface($ifkey, "inet");
 $track_ifaces = link_interface_to_track6($ifkey);
 
-function cooldown(): bool {
+function cooldown(): bool
+{
     global $cooldown_file, $cooldown_time;
     $fp = fopen($cooldown_file, 'c+');
     if ($fp === false) {
@@ -173,7 +174,8 @@ function cooldown(): bool {
     return $blocked;
 }
 
-function pppoe_state($ifkey) {
+function pppoe_state(string $ifkey): array
+{
     if (empty($ifkey)) {
         return [ 'active' => false, 'ipv4state' => false, 'ipv6state' => false, 'ip4' => null, 'ip6' => null ];
     }
@@ -272,7 +274,7 @@ function flush_wan_ipv6(): void
     }
 }
 
-function manage_dhcpdv6($mode): void
+function manage_dhcpdv6(string $mode): void
 {
     global $config, $default_config, $track_ifaces, $toggle_dhcpdv6, $toggle_ramode;
     if (empty($track_ifaces)) {
@@ -325,7 +327,7 @@ function manage_dhcpdv6($mode): void
     }
 }
 
-function update_state_file($state, $write = false): bool
+function update_state_file(string $state, bool $write = false): bool
 {
     global $vhid, $state_file;
     $new_state = "@{$vhid}|{$state}";
@@ -349,7 +351,7 @@ function update_state_file($state, $write = false): bool
     return $changed;
 }
 
-function apply_carp_state($state): void
+function apply_carp_state(string $state): void
 {
     global $config, $conn, $ifkey, $real_iface, $pppoe_state, $is_enabled, $toggle_wan_gui;
     switch ($state) {
@@ -412,6 +414,7 @@ function apply_carp_state($state): void
 function resolve_peer(): array
 {
     global $config, $nodeA, $nodeB;
+
     $iface = (string)($config['hasync']['pfsyncinterface'] ?? '');
     if ($iface === '') {
         return ['error' => 'HA sync interface not configured'];
@@ -426,10 +429,10 @@ function resolve_peer(): array
         return ['error' => 'nodeA/nodeB not set — reinstall or set manually'];
     }
     if ($self === $nodeA) {
-        return ['self' => $self, 'peer' => $nodeB, 'peer_name' => 'nodeB'];
+        return ['self' => $self, 'peer' => $nodeB];
     }
     if ($self === $nodeB) {
-        return ['self' => $self, 'peer' => $nodeA, 'peer_name' => 'nodeA'];
+        return ['self' => $self, 'peer' => $nodeA];
     }
     return ['error' => "Self IP {$self} does not match nodeA ({$nodeA}) or nodeB ({$nodeB})"];
 }
@@ -437,6 +440,7 @@ function resolve_peer(): array
 function peer_cmd(string $cmd): bool
 {
     global $ssh_key;
+
     $r = resolve_peer();
     if (isset($r['error'])) {
         return false;
@@ -537,7 +541,7 @@ function test_ssh(): int
         return 1;
     }
     echo "[ OK ] Self sync IP: {$r['self']}\n";
-    echo "[ OK ] Peer sync IP: {$r['peer']} ({$r['peer_name']})\n";
+    echo "[ OK ] Peer sync IP: {$r['peer']}\n";
 
     if (peer_cmd('hostname')) {
         echo "[ OK ] Peer reachable via SSH\n";
