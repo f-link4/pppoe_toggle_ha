@@ -11,9 +11,9 @@
  */
 
 if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help'])) {
-    echo "=============================================================================\n";
+    echo "≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡\n";
     echo "  PPPoE Toggle HA — WAN interface management for CARP failover events\n";
-    echo "=============================================================================\n";
+    echo "≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡\n";
     echo "Usage:\n";
     echo "  pppoe_toggle_ha @<VHID> MASTER         - Enable WAN (CARP MASTER)\n";
     echo "  pppoe_toggle_ha @<VHID> MASTER conn    - Enable WAN (wait for connectivity)\n";
@@ -28,7 +28,7 @@ if ($argc < 2 || in_array(strtolower($argv[1] ?? ''), ['help', '-h', '--help']))
     echo "  pppoe_toggle_ha set_vhid <number>      - Set VHID to react on\n";
     echo "  pppoe_toggle_ha show_config            - Show current configuration\n";
     echo "  pppoe_toggle_ha help                   - Show this help\n";
-    echo "=============================================================================\n";
+    echo "≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡\n";
     exit(0);
 }
 
